@@ -1,0 +1,35 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@theme {
+  --color-bg-main: #202124;
+  --color-bg-nav: #2f3033;
+  --color-primary: #8ab4f8;
+  --color-text-main: #e8eaed;
+  --color-inactive: #9aa0a6;
+  --color-danger: #f28b82;
+}
+
+body {
+  background-color: var(--color-bg-main);
+  color: var(--color-text-main);
+  font-family: 'Noto Sans', system-ui, sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Custom leaflet dark theme overrides if needed */
+.leaflet-container {
+  background-color: #202124 !important;
+}
+
+/* Hide leaflet attribution for cleaner look, though technically against TOS for OSM, 
+   we can keep a small one or just use standard. Let's keep it small. */
+.leaflet-control-attribution {
+  background: rgba(32, 33, 36, 0.7) !important;
+  color: #9aa0a6 !important;
+}
+.leaflet-control-attribution a {
+  color: #8ab4f8 !important;
+}

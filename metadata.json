@@ -1,0 +1,7 @@
+{
+  "name": "Open Fit Tracker",
+  "description": "A simple, open-source fitness tracker for walking, running, and cycling.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
