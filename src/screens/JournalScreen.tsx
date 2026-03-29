@@ -34,8 +34,8 @@ export default function JournalScreen() {
                 <div className="text-sm text-inactive mb-1">
                   {format(session.startTime, 'd MMMM yyyy, HH:mm', { locale: pl })}
                 </div>
-                <div className="text-lg font-bold text-text-main capitalize mb-2">
-                  {session.type}
+                <div className="text-lg font-bold text-text-main mb-2">
+                  {session.type.charAt(0).toUpperCase() + session.type.slice(1).toLowerCase()}
                 </div>
                 <div className="flex gap-4 text-sm">
                   <div>

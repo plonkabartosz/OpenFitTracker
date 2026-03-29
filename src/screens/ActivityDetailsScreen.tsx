@@ -98,8 +98,8 @@ export default function ActivityDetailsScreen() {
           <div className="text-sm text-inactive mb-1">
             {format(session.startTime, 'd MMMM yyyy, HH:mm', { locale: pl })}
           </div>
-          <div className="text-2xl font-bold text-text-main capitalize">
-            {session.type}
+          <div className="text-2xl font-bold text-text-main">
+            {session.type.charAt(0).toUpperCase() + session.type.slice(1).toLowerCase()}
           </div>
         </div>
 

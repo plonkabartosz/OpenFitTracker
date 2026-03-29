@@ -1,12 +1,18 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { t } from '../i18n';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function ProfileScreen() {
   const profile = useLiveQuery(() => db.profile.get(1));
-  const [username, setUsername] = useState(profile?.username || '');
+  const [username, setUsername] = useState('');
   const [showClearDataPopup, setShowClearDataPopup] = useState(false);
+
+  useEffect(() => {
+    if (profile && profile.username) {
+      setUsername(profile.username);
+    }
+  }, [profile]);
 
   const handleSave = async () => {
     if (profile) {
@@ -14,12 +20,13 @@ export default function ProfileScreen() {
     } else {
       await db.profile.add({ id: 1, username });
     }
-    alert('Zapisano profil');
   };
 
   const exportData = async () => {
     const sessions = await db.sessions.toArray();
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sessions));
+    const profileData = await db.profile.toArray();
+    const exportObj = { sessions, profile: profileData };
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
     downloadAnchorNode.setAttribute("download", "open_fit_tracker_backup.json");
@@ -39,6 +46,14 @@ export default function ProfileScreen() {
           const data = JSON.parse(content);
           if (Array.isArray(data)) {
             await db.sessions.bulkPut(data);
+            alert(t.import_success);
+          } else if (data && typeof data === 'object') {
+            if (data.sessions && Array.isArray(data.sessions)) {
+              await db.sessions.bulkPut(data.sessions);
+            }
+            if (data.profile && Array.isArray(data.profile)) {
+              await db.profile.bulkPut(data.profile);
+            }
             alert(t.import_success);
           } else {
             alert(t.error_occurred);
@@ -94,6 +109,7 @@ export default function ProfileScreen() {
           type="text" 
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          onBlur={handleSave}
           className="w-full bg-bg-main text-text-main rounded-xl p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-primary"
           placeholder="Wpisz nazwę..."
         />
