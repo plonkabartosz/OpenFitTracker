@@ -69,7 +69,6 @@ function Layout() {
 
   const handleStartTrackingClick = async () => {
     let locationGranted = false;
-    let notificationGranted = false;
 
     try {
       const locPerm = await navigator.permissions.query({ name: 'geolocation' });
@@ -78,13 +77,7 @@ function Layout() {
       // Fallback if permissions API is not fully supported
     }
 
-    if ('Notification' in window) {
-      notificationGranted = Notification.permission === 'granted';
-    } else {
-      notificationGranted = true; // Ignore if not supported
-    }
-
-    if (locationGranted && notificationGranted) {
+    if (locationGranted) {
       navigate('/tracking');
     } else {
       setShowPermissionPopup(true);
@@ -93,11 +86,6 @@ function Layout() {
 
   const requestPermissions = async () => {
     setShowPermissionPopup(false);
-    
-    // Request notification permission
-    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-      await Notification.requestPermission();
-    }
 
     // Request location permission by doing a dummy fetch
     if (navigator.geolocation) {
@@ -127,7 +115,7 @@ function Layout() {
             </div>
             <h2 className="text-xl font-bold mb-2">Wymagane uprawnienia</h2>
             <p className="text-inactive text-sm mb-6">
-              Aby poprawnie śledzić Twoją aktywność, aplikacja potrzebuje dostępu do lokalizacji. Aby wyświetlać powiadomienia w tle, potrzebujemy zgody na powiadomienia.
+              Aby poprawnie śledzić Twoją aktywność, aplikacja potrzebuje dostępu do lokalizacji.
             </p>
             <div className="flex gap-3 w-full">
               <button 
@@ -165,7 +153,7 @@ function Layout() {
               className="fixed bottom-24 right-6 w-14 h-14 bg-primary text-bg-main rounded-full flex items-center justify-center shadow-lg transition-colors z-50"
               aria-label={t.start_tracking}
             >
-              <span className="material-symbols-outlined text-4xl">add</span>
+              <span className="material-symbols-outlined text-5xl">add</span>
             </button>
           )}
 

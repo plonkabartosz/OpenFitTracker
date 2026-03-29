@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useEffect, ReactNode } from 'react';
 import { db, LocationPoint } from '../db';
 import { calculateDistance } from '../utils/geo';
-import { useNavigate } from 'react-router-dom';
+import { t } from '../i18n';
 
 interface TrackingContextType {
   isRecording: boolean;
@@ -23,12 +23,12 @@ interface TrackingContextType {
 const TrackingContext = createContext<TrackingContextType | null>(null);
 
 export function TrackingProvider({ children }: { children: ReactNode }) {
-  const [activityType, setActivityType] = useState('Bieganie');
+  const [activityType, setActivityType] = useState(t.activity_types[0]);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [path, setPath] = useState<LocationPoint[]>([]);
   const pathRef = useRef<LocationPoint[]>([]);
-  const [currentPos, setCurrentPos] = useState<[number, number] | null>(null);
+  const [currentPos, setCurrentPos] = useState<[number, number] | null>([52.2297, 21.0122]);
   const [distance, setDistance] = useState(0); // in meters
   const [duration, setDuration] = useState(0); // in seconds
   const [currentSpeed, setCurrentSpeed] = useState(0); // km/h
@@ -68,20 +68,20 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setCurrentPos([pos.coords.latitude, pos.coords.longitude]);
-          setCurrentAltitude(pos.coords.altitude);
-        },
-        (err) => {
-          console.error("Error getting initial location", err);
-          setCurrentPos([52.2297, 21.0122]);
-        },
-        { enableHighAccuracy: true }
-      );
-    } else {
-      setCurrentPos([52.2297, 21.0122]);
+    // Only get location if permission is already granted to avoid prompting on load
+    if (navigator.permissions && navigator.geolocation) {
+      navigator.permissions.query({ name: 'geolocation' }).then(result => {
+        if (result.state === 'granted') {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              setCurrentPos([pos.coords.latitude, pos.coords.longitude]);
+              setCurrentAltitude(pos.coords.altitude);
+            },
+            () => {},
+            { enableHighAccuracy: true }
+          );
+        }
+      });
     }
     
     return () => {

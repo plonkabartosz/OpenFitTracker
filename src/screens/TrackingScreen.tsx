@@ -68,12 +68,6 @@ export default function TrackingScreen() {
 
   return (
     <div className="flex flex-col h-full bg-bg-nav">
-      {countdown !== null && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <span className="text-9xl font-bold text-primary animate-pulse">{countdown}</span>
-        </div>
-      )}
-      
       <div className="flex-1 relative z-0">
         <button 
           onClick={handleBack}
@@ -111,7 +105,8 @@ export default function TrackingScreen() {
                 <select 
                   value={activityType}
                   onChange={(e) => setActivityType(e.target.value)}
-                  className="w-full bg-[#1a1b1e] text-text-main rounded-xl p-4 appearance-none focus:outline-none focus:ring-2 focus:ring-primary text-left"
+                  disabled={countdown !== null}
+                  className="w-full bg-[#1a1b1e] text-text-main rounded-xl p-4 appearance-none focus:outline-none focus:ring-2 focus:ring-primary text-left disabled:opacity-50"
                 >
                   {t.activity_types.map(type => (
                     <option key={type} value={type}>{type}</option>
@@ -120,13 +115,19 @@ export default function TrackingScreen() {
                 <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-inactive">arrow_drop_down</span>
               </div>
             </div>
-            <button 
-              onClick={handleStartWithCountdown}
-              className="w-16 h-16 bg-primary text-bg-main rounded-full flex items-center justify-center shadow-lg transition-colors"
-              aria-label={t.start_tracking}
-            >
-              <span className="material-symbols-outlined text-4xl">play_arrow</span>
-            </button>
+            {countdown !== null ? (
+              <div className="w-16 h-16 bg-primary text-bg-main rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-3xl font-bold">{countdown}</span>
+              </div>
+            ) : (
+              <button 
+                onClick={handleStartWithCountdown}
+                className="w-16 h-16 bg-primary text-bg-main rounded-full flex items-center justify-center shadow-lg transition-colors"
+                aria-label={t.start_tracking}
+              >
+                <span className="material-symbols-outlined text-4xl">play_arrow</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="flex flex-col justify-between gap-4">
