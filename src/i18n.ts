@@ -11,7 +11,7 @@ export const t = {
   distance: 'Dystans',
   speed: 'Pr\u0119dko\u015b\u0107',
   avg_speed: '\u015ar. pr\u0119dko\u015b\u0107',
-  no_sessions: 'Brak zapisanych aktywno\u015bci :/',
+  no_sessions: 'Brak zapisanych aktywno\u015bci',
   session_details: 'Szczeg\u00f3\u0142y treningu',
   speed_chart_title: 'Pr\u0119dko\u015b\u0107 (km/h)',
   export_data: 'Eksportuj dane',

@@ -52,7 +52,7 @@ export default function HomeScreen() {
       <h1 className="text-2xl font-bold text-primary mb-6">{t.app_name}</h1>
       
       <div className="mb-6">
-        <h2 className="text-lg font-bold text-text-main mb-2">Podsumowanie aktywności</h2>
+        <h2 className="text-lg font-bold text-text-main mb-6">Podsumowanie aktywności</h2>
         <div className="relative">
           <select
             value={range}

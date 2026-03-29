@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { t } from './i18n';
 import HomeScreen from './screens/HomeScreen';
@@ -61,13 +62,91 @@ function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isRecording } = useTracking();
+  const [showPermissionPopup, setShowPermissionPopup] = useState(false);
   
   // Hide bottom nav on tracking screen
   const isTrackingScreen = location.pathname === '/tracking';
 
+  const handleStartTrackingClick = async () => {
+    let locationGranted = false;
+    let notificationGranted = false;
+
+    try {
+      const locPerm = await navigator.permissions.query({ name: 'geolocation' });
+      locationGranted = locPerm.state === 'granted';
+    } catch (e) {
+      // Fallback if permissions API is not fully supported
+    }
+
+    if ('Notification' in window) {
+      notificationGranted = Notification.permission === 'granted';
+    } else {
+      notificationGranted = true; // Ignore if not supported
+    }
+
+    if (locationGranted && notificationGranted) {
+      navigate('/tracking');
+    } else {
+      setShowPermissionPopup(true);
+    }
+  };
+
+  const requestPermissions = async () => {
+    setShowPermissionPopup(false);
+    
+    // Request notification permission
+    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+      await Notification.requestPermission();
+    }
+
+    // Request location permission by doing a dummy fetch
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        () => {
+          navigate('/tracking');
+        },
+        () => {
+          // Even if denied, navigate to tracking so the user sees the error message there
+          navigate('/tracking');
+        }
+      );
+    } else {
+      navigate('/tracking');
+    }
+  };
+
   return (
-    <div className="flex flex-col h-screen bg-bg-main text-text-main">
+    <div className="flex flex-col h-[100dvh] bg-bg-main text-text-main">
       <PersistentTrackingNotification />
+      
+      {showPermissionPopup && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-bg-nav p-6 rounded-2xl max-w-sm w-full shadow-2xl flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-primary/20 text-primary rounded-full flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-3xl">location_on</span>
+            </div>
+            <h2 className="text-xl font-bold mb-2">Wymagane uprawnienia</h2>
+            <p className="text-inactive text-sm mb-6">
+              Aby poprawnie śledzić Twoją aktywność, aplikacja potrzebuje dostępu do lokalizacji. Aby wyświetlać powiadomienia w tle, potrzebujemy zgody na powiadomienia.
+            </p>
+            <div className="flex gap-3 w-full">
+              <button 
+                onClick={() => setShowPermissionPopup(false)}
+                className="flex-1 py-3 rounded-xl font-semibold bg-gray-800 text-white"
+              >
+                Anuluj
+              </button>
+              <button 
+                onClick={requestPermissions}
+                className="flex-1 py-3 rounded-xl font-semibold bg-primary text-bg-main"
+              >
+                Zezwól
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className={`flex-1 overflow-y-auto relative ${isTrackingScreen ? '' : 'pb-20'} ${isRecording && !isTrackingScreen ? 'pt-16' : ''}`}>
         <Routes>
           <Route path="/" element={<HomeScreen />} />
@@ -82,11 +161,11 @@ function Layout() {
         <>
           {!isRecording && (
             <button 
-              onClick={() => navigate('/tracking')}
+              onClick={handleStartTrackingClick}
               className="fixed bottom-24 right-6 w-14 h-14 bg-primary text-bg-main rounded-full flex items-center justify-center shadow-lg transition-colors z-50"
               aria-label={t.start_tracking}
             >
-              <span className="material-symbols-outlined text-3xl">add</span>
+              <span className="material-symbols-outlined text-4xl">add</span>
             </button>
           )}
 

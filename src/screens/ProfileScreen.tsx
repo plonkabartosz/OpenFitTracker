@@ -92,7 +92,7 @@ export default function ProfileScreen() {
               alert('Dane zostały usunięte');
             }
           }}
-          className="w-full bg-transparent text-danger border border-danger font-bold py-3 rounded-xl hover:bg-danger hover:bg-opacity-10 transition-colors mt-4"
+          className="w-full bg-transparent text-danger border border-danger font-bold py-3 rounded-xl transition-colors mt-4"
         >
           Wyczyść dane
         </button>

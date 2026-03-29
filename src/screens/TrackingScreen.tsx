@@ -3,7 +3,7 @@ import L from 'leaflet';
 import { useNavigate } from 'react-router-dom';
 import { t } from '../i18n';
 import { useTracking } from '../contexts/TrackingContext';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 // Custom icon for current location
 const currentLocIcon = new L.DivIcon({
@@ -31,6 +31,7 @@ export default function TrackingScreen() {
     path, currentPos, distance, duration, currentSpeed, currentAltitude,
     startTracking, pauseTracking, resumeTracking, stopTracking
   } = useTracking();
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -48,11 +49,32 @@ export default function TrackingScreen() {
     }
   };
 
+  const handleStartWithCountdown = () => {
+    setCountdown(3);
+    let count = 3;
+    const interval = setInterval(() => {
+      count -= 1;
+      if (count > 0) {
+        setCountdown(count);
+      } else {
+        clearInterval(interval);
+        setCountdown(null);
+        startTracking();
+      }
+    }, 1000);
+  };
+
   if (!currentPos) return <div className="p-4 bg-bg-main h-full">Wczytywanie mapy...</div>;
 
   return (
     <div className="flex flex-col h-full bg-bg-nav">
-      <div className="h-[70%] relative z-0">
+      {countdown !== null && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <span className="text-9xl font-bold text-primary animate-pulse">{countdown}</span>
+        </div>
+      )}
+      
+      <div className="flex-1 relative z-0">
         <button 
           onClick={handleBack}
           className="absolute top-4 left-4 z-[1000] bg-bg-nav p-2 rounded-full shadow-lg text-text-main flex items-center justify-center transition-colors"
@@ -80,9 +102,9 @@ export default function TrackingScreen() {
         </MapContainer>
       </div>
 
-      <div className="h-[30%] bg-bg-nav p-6 flex flex-col justify-between z-10">
+      <div className="shrink-0 bg-bg-nav p-6 flex flex-col justify-between z-10">
         {!isRecording ? (
-          <div className="flex flex-col h-full items-center justify-center gap-6">
+          <div className="flex flex-col items-center justify-center gap-6">
             <div className="w-full relative">
               <label className="block text-sm text-inactive mb-2 text-center">{t.select_activity}</label>
               <div className="relative">
@@ -99,7 +121,7 @@ export default function TrackingScreen() {
               </div>
             </div>
             <button 
-              onClick={startTracking}
+              onClick={handleStartWithCountdown}
               className="w-16 h-16 bg-primary text-bg-main rounded-full flex items-center justify-center shadow-lg transition-colors"
               aria-label={t.start_tracking}
             >
@@ -107,13 +129,13 @@ export default function TrackingScreen() {
             </button>
           </div>
         ) : (
-          <div className="flex flex-col h-full justify-between">
-            <div className="flex justify-between items-center mb-2">
+          <div className="flex flex-col justify-between gap-4">
+            <div className="flex justify-between items-center">
               <div className="text-xl font-bold text-primary">{activityType}</div>
               <div className="text-3xl font-mono font-bold">{formatTime(duration)}</div>
             </div>
             
-            <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="flex flex-col">
                 <span className="text-inactive text-sm">{t.distance}</span>
                 <span className="text-2xl font-bold">{(distance / 1000).toFixed(2)} <span className="text-sm text-inactive font-normal">km</span></span>
@@ -128,7 +150,7 @@ export default function TrackingScreen() {
               </div>
             </div>
 
-            <div className="flex gap-4 mt-auto">
+            <div className="flex gap-4 mt-2">
               <button 
                 onClick={async () => {
                   await stopTracking();

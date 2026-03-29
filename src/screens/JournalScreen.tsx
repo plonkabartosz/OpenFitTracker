@@ -20,7 +20,7 @@ export default function JournalScreen() {
       
       {sessions.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 text-inactive">
-          <p>{t.no_sessions}</p>
+          <p className="text-xl font-medium">{t.no_sessions}</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -28,7 +28,7 @@ export default function JournalScreen() {
             <div 
               key={session.id} 
               onClick={() => navigate(`/activity/${session.id}`)}
-              className="bg-bg-nav rounded-2xl p-4 flex cursor-pointer hover:bg-gray-800 transition-colors"
+              className="bg-bg-nav rounded-2xl p-4 flex cursor-pointer transition-colors"
             >
               <div className="flex-1">
                 <div className="text-sm text-inactive mb-1">
