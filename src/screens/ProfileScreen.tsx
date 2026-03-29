@@ -54,7 +54,6 @@ export default function ProfileScreen() {
   const handleClearData = async () => {
     setShowClearDataPopup(false);
     await db.sessions.clear();
-    alert('Dane zostały usunięte');
   };
 
   return (

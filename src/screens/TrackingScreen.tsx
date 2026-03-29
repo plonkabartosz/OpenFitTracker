@@ -17,8 +17,15 @@ const currentLocIcon = new L.DivIcon({
 function MapController({ center, isTracking }: { center: [number, number] | null, isTracking: boolean }) {
   const map = useMap();
   useEffect(() => {
-    if (center && isTracking) {
-      map.setView(center, map.getZoom(), { animate: true });
+    if (center) {
+      if (isTracking) {
+        map.setView(center, map.getZoom(), { animate: true });
+      } else if (map.getZoom() < 10) {
+        // If we just got the location and we're zoomed out (e.g. showing Poland), zoom in to the user
+        map.setView(center, 16, { animate: true });
+      } else {
+        map.setView(center, map.getZoom(), { animate: true });
+      }
     }
   }, [center, isTracking, map]);
   return null;
@@ -64,7 +71,8 @@ export default function TrackingScreen() {
     }, 1000);
   };
 
-  if (!currentPos) return <div className="p-4 bg-bg-main h-full">Wczytywanie mapy...</div>;
+  const mapCenter = currentPos || [52.0693, 19.4803];
+  const mapZoom = currentPos ? 16 : 6;
 
   return (
     <div className="flex flex-col h-full bg-bg-nav">
@@ -76,8 +84,8 @@ export default function TrackingScreen() {
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
         <MapContainer 
-          center={currentPos} 
-          zoom={16} 
+          center={mapCenter as [number, number]} 
+          zoom={mapZoom} 
           style={{ height: '100%', width: '100%' }}
           zoomControl={false}
           dragging={!isRecording || isPaused} // Lock map when recording and not paused
@@ -86,7 +94,7 @@ export default function TrackingScreen() {
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           />
-          <MapController center={currentPos} isTracking={isRecording && !isPaused} />
+          {currentPos && <MapController center={currentPos} isTracking={isRecording && !isPaused} />}
           {path.length > 0 && (
             <Polyline positions={path.map(p => [p.lat, p.lng])} color="#8ab4f8" weight={4} />
           )}

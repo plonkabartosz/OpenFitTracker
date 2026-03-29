@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { t } from './i18n';
 import HomeScreen from './screens/HomeScreen';
@@ -67,40 +67,38 @@ function Layout() {
   // Hide bottom nav on tracking screen
   const isTrackingScreen = location.pathname === '/tracking';
 
-  const handleStartTrackingClick = async () => {
-    let locationGranted = false;
+  useEffect(() => {
+    const checkPerms = async () => {
+      try {
+        const perm = await navigator.permissions.query({ name: 'geolocation' });
+        if (perm.state === 'prompt') {
+          setShowPermissionPopup(true);
+        }
+      } catch (e) {
+        // Fallback if permissions API is not fully supported
+      }
+    };
+    checkPerms();
+  }, []);
 
-    try {
-      const locPerm = await navigator.permissions.query({ name: 'geolocation' });
-      locationGranted = locPerm.state === 'granted';
-    } catch (e) {
-      // Fallback if permissions API is not fully supported
-    }
-
-    if (locationGranted) {
-      navigate('/tracking');
-    } else {
-      setShowPermissionPopup(true);
-    }
+  const handleStartTrackingClick = () => {
+    navigate('/tracking');
   };
 
-  const requestPermissions = async () => {
+  const requestPermissions = () => {
     setShowPermissionPopup(false);
 
     // Request location permission by doing a dummy fetch
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        () => {
-          navigate('/tracking');
-        },
-        () => {
-          // Even if denied, navigate to tracking so the user sees the error message there
-          navigate('/tracking');
-        }
+        () => {},
+        () => {}
       );
-    } else {
-      navigate('/tracking');
     }
+  };
+
+  const cancelPermissions = () => {
+    setShowPermissionPopup(false);
   };
 
   return (
@@ -119,7 +117,7 @@ function Layout() {
             </p>
             <div className="flex gap-3 w-full">
               <button 
-                onClick={() => setShowPermissionPopup(false)}
+                onClick={cancelPermissions}
                 className="flex-1 py-3 rounded-xl font-semibold bg-gray-800 text-white"
               >
                 Anuluj

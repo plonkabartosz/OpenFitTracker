@@ -28,7 +28,7 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
   const [isPaused, setIsPaused] = useState(false);
   const [path, setPath] = useState<LocationPoint[]>([]);
   const pathRef = useRef<LocationPoint[]>([]);
-  const [currentPos, setCurrentPos] = useState<[number, number] | null>([52.2297, 21.0122]);
+  const [currentPos, setCurrentPos] = useState<[number, number] | null>(null);
   const [distance, setDistance] = useState(0); // in meters
   const [duration, setDuration] = useState(0); // in seconds
   const [currentSpeed, setCurrentSpeed] = useState(0); // km/h
@@ -71,16 +71,21 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
     // Only get location if permission is already granted to avoid prompting on load
     if (navigator.permissions && navigator.geolocation) {
       navigator.permissions.query({ name: 'geolocation' }).then(result => {
-        if (result.state === 'granted') {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              setCurrentPos([pos.coords.latitude, pos.coords.longitude]);
-              setCurrentAltitude(pos.coords.altitude);
-            },
-            () => {},
-            { enableHighAccuracy: true }
-          );
-        }
+        const updatePos = () => {
+          if (result.state === 'granted') {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                setCurrentPos([pos.coords.latitude, pos.coords.longitude]);
+                setCurrentAltitude(pos.coords.altitude);
+              },
+              () => {},
+              { enableHighAccuracy: true }
+            );
+          }
+        };
+
+        updatePos();
+        result.addEventListener('change', updatePos);
       });
     }
     
@@ -91,21 +96,6 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const startTracking = async () => {
-    if (!navigator.geolocation) {
-      alert('GPS is disabled');
-      return;
-    }
-
-    try {
-      const permission = await navigator.permissions.query({ name: 'geolocation' });
-      if (permission.state === 'denied') {
-        alert('Brak uprawnień do lokalizacji. Nie można rozpocząć aktywności.');
-        return;
-      }
-    } catch (e) {
-      // Ignore if permissions API is not supported
-    }
-
     setIsRecording(true);
     setIsPaused(false);
     startTimeRef.current = Date.now();
@@ -119,59 +109,61 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
       setDuration(prev => prev + 1);
     }, 1000);
 
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        if (!isMovingRef.current) return; // Ignore updates if device is not moving
+    if (navigator.geolocation) {
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          if (!isMovingRef.current) return; // Ignore updates if device is not moving
 
-        const newPoint: LocationPoint = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          timestamp: pos.timestamp,
-          speed: pos.coords.speed,
-          accuracy: pos.coords.accuracy,
-          altitude: pos.coords.altitude
-        };
+          const newPoint: LocationPoint = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            timestamp: pos.timestamp,
+            speed: pos.coords.speed,
+            accuracy: pos.coords.accuracy,
+            altitude: pos.coords.altitude
+          };
 
-        setCurrentPos([newPoint.lat, newPoint.lng]);
-        setCurrentAltitude(newPoint.altitude);
+          setCurrentPos([newPoint.lat, newPoint.lng]);
+          setCurrentAltitude(newPoint.altitude);
 
-        if (newPoint.accuracy > 20) return;
+          if (newPoint.accuracy > 20) return;
 
-        setPath(prev => {
-          let newPath = prev;
-          if (lastPosRef.current) {
-            const dist = calculateDistance(
-              lastPosRef.current.lat, lastPosRef.current.lng,
-              newPoint.lat, newPoint.lng
-            );
-            
-            if (dist > 1) {
-              setDistance(d => d + dist);
+          setPath(prev => {
+            let newPath = prev;
+            if (lastPosRef.current) {
+              const dist = calculateDistance(
+                lastPosRef.current.lat, lastPosRef.current.lng,
+                newPoint.lat, newPoint.lng
+              );
               
-              if (newPoint.speed === null) {
-                const timeDiff = (newPoint.timestamp - lastPosRef.current!.timestamp) / 1000;
-                if (timeDiff > 0) {
-                  setCurrentSpeed((dist / timeDiff) * 3.6);
+              if (dist > 1) {
+                setDistance(d => d + dist);
+                
+                if (newPoint.speed === null) {
+                  const timeDiff = (newPoint.timestamp - lastPosRef.current!.timestamp) / 1000;
+                  if (timeDiff > 0) {
+                    setCurrentSpeed((dist / timeDiff) * 3.6);
+                  }
+                } else {
+                  setCurrentSpeed(newPoint.speed * 3.6);
                 }
-              } else {
-                setCurrentSpeed(newPoint.speed * 3.6);
+                lastPosRef.current = newPoint;
               }
+              newPath = [...prev, newPoint];
+            } else {
               lastPosRef.current = newPoint;
+              newPath = [...prev, newPoint];
             }
-            newPath = [...prev, newPoint];
-          } else {
-            lastPosRef.current = newPoint;
-            newPath = [...prev, newPoint];
-          }
-          pathRef.current = newPath;
-          return newPath;
-        });
-      },
-      (err) => {
-        console.error("Tracking error", err);
-      },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
-    );
+            pathRef.current = newPath;
+            return newPath;
+          });
+        },
+        (err) => {
+          console.error("Tracking error", err);
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+      );
+    }
   };
 
   const pauseTracking = () => {
@@ -194,54 +186,56 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
       setDuration(prev => prev + 1);
     }, 1000);
 
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        if (!isMovingRef.current) return;
+    if (navigator.geolocation) {
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          if (!isMovingRef.current) return;
 
-        const newPoint: LocationPoint = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          timestamp: pos.timestamp,
-          speed: pos.coords.speed,
-          accuracy: pos.coords.accuracy,
-          altitude: pos.coords.altitude
-        };
-        setCurrentPos([newPoint.lat, newPoint.lng]);
-        setCurrentAltitude(newPoint.altitude);
-        
-        if (newPoint.accuracy > 20) return;
-        
-        setPath(prev => {
-          let newPath = prev;
-          if (lastPosRef.current) {
-            const dist = calculateDistance(
-              lastPosRef.current.lat, lastPosRef.current.lng,
-              newPoint.lat, newPoint.lng
-            );
-            if (dist > 1) {
-              setDistance(d => d + dist);
-              if (newPoint.speed === null) {
-                const timeDiff = (newPoint.timestamp - lastPosRef.current!.timestamp) / 1000;
-                if (timeDiff > 0) {
-                  setCurrentSpeed((dist / timeDiff) * 3.6);
+          const newPoint: LocationPoint = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            timestamp: pos.timestamp,
+            speed: pos.coords.speed,
+            accuracy: pos.coords.accuracy,
+            altitude: pos.coords.altitude
+          };
+          setCurrentPos([newPoint.lat, newPoint.lng]);
+          setCurrentAltitude(newPoint.altitude);
+          
+          if (newPoint.accuracy > 20) return;
+          
+          setPath(prev => {
+            let newPath = prev;
+            if (lastPosRef.current) {
+              const dist = calculateDistance(
+                lastPosRef.current.lat, lastPosRef.current.lng,
+                newPoint.lat, newPoint.lng
+              );
+              if (dist > 1) {
+                setDistance(d => d + dist);
+                if (newPoint.speed === null) {
+                  const timeDiff = (newPoint.timestamp - lastPosRef.current!.timestamp) / 1000;
+                  if (timeDiff > 0) {
+                    setCurrentSpeed((dist / timeDiff) * 3.6);
+                  }
+                } else {
+                  setCurrentSpeed(newPoint.speed * 3.6);
                 }
-              } else {
-                setCurrentSpeed(newPoint.speed * 3.6);
+                lastPosRef.current = newPoint;
               }
+              newPath = [...prev, newPoint];
+            } else {
               lastPosRef.current = newPoint;
+              newPath = [...prev, newPoint];
             }
-            newPath = [...prev, newPoint];
-          } else {
-            lastPosRef.current = newPoint;
-            newPath = [...prev, newPoint];
-          }
-          pathRef.current = newPath;
-          return newPath;
-        });
-      },
-      (err) => console.error(err),
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
-    );
+            pathRef.current = newPath;
+            return newPath;
+          });
+        },
+        (err) => console.error(err),
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+      );
+    }
   };
 
   const stopTracking = async () => {
