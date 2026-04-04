@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { t } from '../i18n';
+import { calculateDistance } from '../utils/geo';
 import { MapContainer, TileLayer, Polyline, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import { format } from 'date-fns';
@@ -30,7 +31,7 @@ export default function ActivityDetailsScreen() {
 
   if (!session) return <div className="p-4">Loading...</div>;
 
-  const path = session.path;
+  const path = session.path || [];
   const hasPath = path.length > 0;
   
   let center: [number, number] = [52.2297, 21.0122];
@@ -126,7 +127,13 @@ export default function ActivityDetailsScreen() {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData}>
                     <XAxis dataKey="time" hide />
-                    <YAxis domain={['auto', 'auto']} hide />
+                    <YAxis 
+                      domain={['auto', 'auto']} 
+                      width={35} 
+                      tick={{ fill: '#9aa0a6', fontSize: 10 }} 
+                      axisLine={false}
+                      tickLine={false}
+                    />
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#2f3033', border: 'none', borderRadius: '8px', color: '#e8eaed' }}
                       itemStyle={{ color: '#8ab4f8' }}
@@ -144,7 +151,13 @@ export default function ActivityDetailsScreen() {
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
                       <XAxis dataKey="time" hide />
-                      <YAxis domain={['auto', 'auto']} hide />
+                      <YAxis 
+                        domain={['auto', 'auto']} 
+                        width={35} 
+                        tick={{ fill: '#9aa0a6', fontSize: 10 }} 
+                        axisLine={false}
+                        tickLine={false}
+                      />
                       <Tooltip 
                         contentStyle={{ backgroundColor: '#2f3033', border: 'none', borderRadius: '8px', color: '#e8eaed' }}
                         itemStyle={{ color: '#4ade80' }}
@@ -160,20 +173,4 @@ export default function ActivityDetailsScreen() {
       </div>
     </div>
   );
-}
-
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371e3; // metres
-  const \u03c61 = lat1 * Math.PI/180; // \u03c6, \u03bb in radians
-  const \u03c62 = lat2 * Math.PI/180;
-  const \u0394\u03c6 = (lat2-lat1) * Math.PI/180;
-  const \u0394\u03bb = (lon2-lon1) * Math.PI/180;
-
-  const a = Math.sin(\u0394\u03c6/2) * Math.sin(\u0394\u03c6/2) +
-            Math.cos(\u03c61) * Math.cos(\u03c62) *
-            Math.sin(\u0394\u03bb/2) * Math.sin(\u0394\u03bb/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-  const d = R * c; // in metres
-  return d;
 }
