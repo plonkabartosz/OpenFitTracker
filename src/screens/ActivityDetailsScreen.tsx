@@ -3,11 +3,12 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { t } from '../i18n';
 import { calculateDistance } from '../utils/geo';
-import { MapContainer, TileLayer, Polyline, Marker } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import React, { useState, useEffect } from 'react';
 
 const startIcon = new L.DivIcon({
   className: 'custom-div-icon',
@@ -23,9 +24,22 @@ const endIcon = new L.DivIcon({
   iconAnchor: [6, 6]
 });
 
+function MapController({ bounds, resetCounter }: { bounds: L.LatLngBounds | null, resetCounter: number }) {
+  const map = useMap();
+  useEffect(() => {
+    if (bounds) {
+      map.fitBounds(bounds, { padding: [20, 20] });
+    }
+  }, [map, bounds, resetCounter]);
+  return null;
+}
+
+const SEPARATOR_COLOR = '#3c4043';
+
 export default function ActivityDetailsScreen() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [resetCounter, setResetCounter] = useState(0);
   
   const session = useLiveQuery(() => db.sessions.get(Number(id)), [id]);
 
@@ -34,10 +48,7 @@ export default function ActivityDetailsScreen() {
   const path = session.path || [];
   const hasPath = path.length > 0;
   
-  let center: [number, number] = [52.2297, 21.0122];
-  if (hasPath) {
-    center = [path[0].lat, path[0].lng];
-  }
+  const bounds = hasPath ? L.latLngBounds(path.map(p => [p.lat, p.lng])) : null;
 
   // Calculate chart data
   const chartData = path.map((p, index) => {
@@ -63,32 +74,44 @@ export default function ActivityDetailsScreen() {
 
   return (
     <div className="flex flex-col h-full bg-bg-main overflow-y-auto">
-      <div className="sticky top-0 z-50 bg-bg-main p-4 flex items-center gap-4 border-b border-gray-800">
-        <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-primary rounded-full transition-colors">
+      <div className="sticky top-0 z-50 bg-bg-main p-4 flex items-center border-b border-gray-800">
+        <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-primary rounded-full transition-colors flex items-center justify-center">
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
-        <h1 className="text-xl font-bold">{t.session_details}</h1>
+        <h1 className="text-xl font-bold ml-2">{t.session_details}</h1>
       </div>
 
-      <div className="h-64 w-full relative">
+      <div className="h-[320px] w-full relative">
         {hasPath ? (
-          <MapContainer 
-            center={center} 
-            zoom={14} 
-            style={{ height: '100%', width: '100%' }}
-            zoomControl={false}
-            dragging={true}
-          >
-            <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            />
-            <Polyline positions={path.map(p => [p.lat, p.lng])} color="#8ab4f8" weight={4} />
-            <Marker position={[path[0].lat, path[0].lng]} icon={startIcon} />
-            <Marker position={[path[path.length - 1].lat, path[path.length - 1].lng]} icon={endIcon} />
-          </MapContainer>
+          <>
+            <MapContainer 
+              bounds={bounds || undefined}
+              style={{ height: '320px', width: '100%' }}
+              zoomControl={false}
+              dragging={true}
+            >
+              <TileLayer
+                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              />
+              <Polyline positions={path.map(p => [p.lat, p.lng])} color="#8ab4f8" weight={4} />
+              <Marker position={[path[0].lat, path[0].lng]} icon={startIcon} />
+              <Marker position={[path[path.length - 1].lat, path[path.length - 1].lng]} icon={endIcon} />
+              <MapController bounds={bounds} resetCounter={resetCounter} />
+            </MapContainer>
+            
+            <div className="absolute bottom-4 left-4 z-[1000]">
+              <button 
+                onClick={() => setResetCounter(prev => prev + 1)}
+                className="w-10 h-10 bg-bg-nav text-primary rounded-full shadow-lg flex items-center justify-center hover:bg-gray-800 transition-colors"
+                title="Resetuj widok"
+              >
+                <span className="material-symbols-outlined">center_focus_strong</span>
+              </button>
+            </div>
+          </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-800 text-inactive">
+          <div className="w-full h-[320px] flex items-center justify-center bg-gray-800 text-inactive">
             Brak danych GPS
           </div>
         )}
@@ -104,18 +127,30 @@ export default function ActivityDetailsScreen() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <div className="bg-bg-nav p-4 rounded-2xl flex flex-col">
+        <div className="bg-bg-nav p-6 rounded-2xl mb-8 flex flex-col gap-6">
+          <div className="flex flex-col">
+            <span className="text-inactive text-sm mb-1">Czas aktywności</span>
+            <span className="text-2xl font-bold text-text-main">
+              {Math.floor(session.durationMs / 60000)} <span className="text-sm text-inactive font-normal">min</span>
+            </span>
+          </div>
+          
+          <div className="w-full h-px" style={{ backgroundColor: SEPARATOR_COLOR }}></div>
+
+          <div className="flex flex-col">
             <span className="text-inactive text-sm mb-1">{t.distance}</span>
-            <span className="text-2xl font-bold text-text-main">{(session.distanceMeters / 1000).toFixed(2)} <span className="text-sm text-inactive font-normal">km</span></span>
+            <span className="text-2xl font-bold text-text-main">
+              {(session.distanceMeters / 1000).toFixed(2)} <span className="text-sm text-inactive font-normal">km</span>
+            </span>
           </div>
-          <div className="bg-bg-nav p-4 rounded-2xl flex flex-col">
-            <span className="text-inactive text-sm mb-1">{t.time}</span>
-            <span className="text-2xl font-bold text-text-main">{Math.floor(session.durationMs / 60000)} <span className="text-sm text-inactive font-normal">min</span></span>
-          </div>
-          <div className="bg-bg-nav p-4 rounded-2xl flex flex-col col-span-2">
+
+          <div className="w-full h-px" style={{ backgroundColor: SEPARATOR_COLOR }}></div>
+
+          <div className="flex flex-col">
             <span className="text-inactive text-sm mb-1">{t.avg_speed}</span>
-            <span className="text-2xl font-bold text-text-main">{avgSpeed.toFixed(1)} <span className="text-sm text-inactive font-normal">km/h</span></span>
+            <span className="text-2xl font-bold text-text-main">
+              {avgSpeed.toFixed(1)} <span className="text-sm text-inactive font-normal">km/h</span>
+            </span>
           </div>
         </div>
 

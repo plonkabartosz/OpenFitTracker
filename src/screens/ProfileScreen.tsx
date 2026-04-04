@@ -14,11 +14,11 @@ export default function ProfileScreen() {
     }
   }, [profile]);
 
-  const handleSave = async () => {
+  const handleSave = async (newUsername: string) => {
     if (profile) {
-      await db.profile.update(1, { username });
+      await db.profile.update(1, { username: newUsername });
     } else {
-      await db.profile.add({ id: 1, username });
+      await db.profile.add({ id: 1, username: newUsername });
     }
   };
 
@@ -33,7 +33,6 @@ export default function ProfileScreen() {
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
-    alert(t.export_success);
   };
 
   const importData = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,7 +45,6 @@ export default function ProfileScreen() {
           const data = JSON.parse(content);
           if (Array.isArray(data)) {
             await db.sessions.bulkPut(data);
-            alert(t.import_success);
           } else if (data && typeof data === 'object') {
             if (data.sessions && Array.isArray(data.sessions)) {
               await db.sessions.bulkPut(data.sessions);
@@ -54,12 +52,9 @@ export default function ProfileScreen() {
             if (data.profile && Array.isArray(data.profile)) {
               await db.profile.bulkPut(data.profile);
             }
-            alert(t.import_success);
-          } else {
-            alert(t.error_occurred);
           }
         } catch (err) {
-          alert(t.error_occurred);
+          console.error("Import error", err);
         }
       };
       reader.readAsText(file);
@@ -104,21 +99,18 @@ export default function ProfileScreen() {
       <h1 className="text-2xl font-bold text-primary mb-6">{t.nav_profile}</h1>
       
       <div className="bg-bg-nav rounded-2xl p-6 mb-6">
-        <label className="block text-sm text-inactive mb-2">Nazwa użytkownika</label>
+        <h2 className="text-lg font-bold mb-2">Nazwa użytkownika</h2>
         <input 
           type="text" 
           value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          onBlur={handleSave}
-          className="w-full bg-bg-main text-text-main rounded-xl p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-primary"
+          onChange={(e) => {
+            const val = e.target.value;
+            setUsername(val);
+            handleSave(val);
+          }}
+          className="w-full bg-bg-main text-text-main rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-primary"
           placeholder="Wpisz nazwę..."
         />
-        <button 
-          onClick={handleSave}
-          className="w-full bg-primary text-bg-main font-bold py-3 rounded-xl hover:bg-opacity-90 transition-colors"
-        >
-          Zapisz
-        </button>
       </div>
 
       <div className="bg-bg-nav rounded-2xl p-6 flex flex-col gap-4">
