@@ -59,6 +59,21 @@ export default function ActivityDetailsScreen() {
   
   const bounds = React.useMemo(() => hasPath ? L.latLngBounds(path.map(p => [p.lat, p.lng])) : null, [path, hasPath]);
 
+  // Split path into segments based on isSegmentStart
+  const segments: any[][] = [];
+  let currentSegment: any[] = [];
+  
+  path.forEach(p => {
+    if (p.isSegmentStart && currentSegment.length > 0) {
+      segments.push(currentSegment);
+      currentSegment = [];
+    }
+    currentSegment.push(p);
+  });
+  if (currentSegment.length > 0) {
+    segments.push(currentSegment);
+  }
+
   if (!session) return <div className="p-4">Loading...</div>;
 
   const handleDelete = async () => {
@@ -151,7 +166,9 @@ export default function ActivityDetailsScreen() {
                 url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
               />
-              <Polyline positions={path.map(p => [p.lat, p.lng])} color="#8ab4f8" weight={4} />
+              {segments.map((segment, idx) => (
+                <Polyline key={idx} positions={segment.map(p => [p.lat, p.lng])} color="#8ab4f8" weight={4} />
+              ))}
               <Marker position={[path[0].lat, path[0].lng]} icon={startIcon} />
               <Marker position={[path[path.length - 1].lat, path[path.length - 1].lng]} icon={endIcon} />
               <MapController bounds={bounds} resetCounter={resetCounter} />

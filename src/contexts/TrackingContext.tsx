@@ -51,7 +51,9 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
   const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const lastPosRef = useRef<LocationPoint | null>(null);
+  const lastUIPosRef = useRef<LocationPoint | null>(null);
   const lastElevationPosRef = useRef<{lat: number, lng: number} | null>(null);
+  const shouldStartNewSegmentRef = useRef<boolean>(false);
 
   // Accelerometer logic
   const lastMotionTimeRef = useRef<number>(Date.now());
@@ -110,22 +112,27 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
         const handleLocationUpdate = async () => {
           const alt = await updateElevation(newLat, newLng);
           const finalAlt = alt !== null ? alt : newAlt;
+          
+          // Keep updating UI even if paused
           setCurrentAltitude(finalAlt);
-
-          // Always update currentPos if NOT recording
-          if (!isRecording) {
-            setCurrentPos([newLat, newLng]);
-            return;
+          setCurrentPos([newLat, newLng]);
+          
+          // Calculate speed for UI
+          if (newSpeed !== null) {
+            setCurrentSpeed(newSpeed * 3.6);
+          } else if (lastUIPosRef.current) {
+            const dist = calculateDistance(
+              lastUIPosRef.current.lat, lastUIPosRef.current.lng,
+              newLat, newLng
+            );
+            const timeDiff = (newTs - lastUIPosRef.current.timestamp) / 1000;
+            if (timeDiff > 0) {
+              setCurrentSpeed((dist / timeDiff) * 3.6);
+            }
           }
 
-          // If recording, use sensor data to eliminate drift
-          if (!isMovingRef.current || isPaused) return;
-
-          setCurrentPos([newLat, newLng]);
-
-          if (newAcc > 20) return;
-
-          const newPoint: LocationPoint = {
+          // Update lastUIPosRef for next UI update
+          lastUIPosRef.current = {
             lat: newLat,
             lng: newLng,
             timestamp: newTs,
@@ -134,8 +141,35 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
             altitude: finalAlt
           };
 
+          // If not recording, we are done
+          if (!isRecording) return;
+
+          // If paused, we don't save data or update distance
+          if (isPaused) return;
+
+          // If recording and not paused, use sensor data to eliminate drift
+          if (!isMovingRef.current) return;
+
+          if (newAcc > 20) return;
+
+          const isSegmentStart = shouldStartNewSegmentRef.current;
+          if (isSegmentStart) {
+            shouldStartNewSegmentRef.current = false;
+          }
+
+          const newPoint: LocationPoint = {
+            lat: newLat,
+            lng: newLng,
+            timestamp: newTs,
+            speed: newSpeed,
+            accuracy: newAcc,
+            altitude: finalAlt,
+            isSegmentStart: isSegmentStart
+          };
+
           setPath(prev => {
-            if (lastPosRef.current) {
+            // Only calculate distance if NOT a segment start and we have a previous point
+            if (lastPosRef.current && !isSegmentStart) {
               const dist = calculateDistance(
                 lastPosRef.current.lat, lastPosRef.current.lng,
                 newLat, newLng
@@ -143,15 +177,7 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
               
               if (dist > 1) {
                 setDistance(d => d + dist);
-                
-                if (newSpeed === null) {
-                  const timeDiff = (newTs - lastPosRef.current.timestamp) / 1000;
-                  if (timeDiff > 0) {
-                    setCurrentSpeed((dist / timeDiff) * 3.6);
-                  }
-                } else {
-                  setCurrentSpeed(newSpeed * 3.6);
-                }
+                // Speed is already updated above for UI
                 lastPosRef.current = newPoint;
                 const newPath = [...prev, newPoint];
                 pathRef.current = newPath;
@@ -159,6 +185,7 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
               }
               return prev;
             } else {
+              // First point of session or first point of new segment
               lastPosRef.current = newPoint;
               const newPath = [...prev, newPoint];
               pathRef.current = newPath;
@@ -185,12 +212,14 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
   const startTracking = async () => {
     setIsRecording(true);
     setIsPaused(false);
+    shouldStartNewSegmentRef.current = false;
     startTimeRef.current = Date.now();
     setPath([]);
     pathRef.current = [];
     setDistance(0);
     setDuration(0);
     lastPosRef.current = null;
+    lastUIPosRef.current = null;
 
     timerRef.current = setInterval(() => {
       setDuration(prev => prev + 1);
@@ -208,6 +237,7 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
 
   const resumeTracking = () => {
     setIsPaused(false);
+    shouldStartNewSegmentRef.current = true;
     
     timerRef.current = setInterval(() => {
       setDuration(prev => prev + 1);
@@ -235,6 +265,7 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
     setDistance(0);
     setDuration(0);
     setCurrentSpeed(0);
+    shouldStartNewSegmentRef.current = false;
   };
 
   return (

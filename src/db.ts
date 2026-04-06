@@ -7,6 +7,7 @@ export interface LocationPoint {
   speed: number | null; // m/s
   accuracy: number; // meters
   altitude?: number | null; // meters
+  isSegmentStart?: boolean;
 }
 
 export interface ActivitySession {

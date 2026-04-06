@@ -74,6 +74,21 @@ export default function TrackingScreen() {
   const mapCenter = currentPos || [52.0693, 19.4803];
   const mapZoom = currentPos ? 16 : 6;
 
+  // Split path into segments based on isSegmentStart
+  const segments: any[][] = [];
+  let currentSegment: any[] = [];
+  
+  path.forEach(p => {
+    if (p.isSegmentStart && currentSegment.length > 0) {
+      segments.push(currentSegment);
+      currentSegment = [];
+    }
+    currentSegment.push(p);
+  });
+  if (currentSegment.length > 0) {
+    segments.push(currentSegment);
+  }
+
   return (
     <div className="flex flex-col h-full bg-bg-nav">
       <div className="flex-1 relative z-0">
@@ -95,9 +110,9 @@ export default function TrackingScreen() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           />
           {currentPos && <MapController center={currentPos} isTracking={isRecording && !isPaused} />}
-          {path.length > 0 && (
-            <Polyline positions={path.map(p => [p.lat, p.lng])} color="#8ab4f8" weight={4} />
-          )}
+          {segments.map((segment, idx) => (
+            <Polyline key={idx} positions={segment.map(p => [p.lat, p.lng])} color="#8ab4f8" weight={4} />
+          ))}
           {currentPos && (
             <Marker position={currentPos} icon={currentLocIcon} />
           )}
