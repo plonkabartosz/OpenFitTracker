@@ -7,7 +7,7 @@ import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet
 import L from 'leaflet';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import React, { useState, useEffect } from 'react';
 
 const startIcon = new L.DivIcon({
@@ -54,12 +54,12 @@ export default function ActivityDetailsScreen() {
   
   const session = useLiveQuery(() => db.sessions.get(Number(id)), [id]);
 
-  if (!session) return <div className="p-4">Loading...</div>;
-
-  const path = session.path || [];
+  const path = session?.path || [];
   const hasPath = path.length > 0;
   
-  const bounds = React.useMemo(() => hasPath ? L.latLngBounds(path.map(p => [p.lat, p.lng])) : null, [path]);
+  const bounds = React.useMemo(() => hasPath ? L.latLngBounds(path.map(p => [p.lat, p.lng])) : null, [path, hasPath]);
+
+  if (!session) return <div className="p-4">Loading...</div>;
 
   const handleDelete = async () => {
     await db.sessions.delete(Number(id));
@@ -87,6 +87,19 @@ export default function ActivityDetailsScreen() {
   }).filter((_, i) => i % Math.ceil(path.length / 50) === 0); // Downsample for chart
 
   const avgSpeed = session.durationMs > 0 ? (session.distanceMeters / (session.durationMs / 1000)) * 3.6 : 0;
+
+  const speeds = chartData.map(d => d.speed);
+  const altitudes = chartData.map(d => d.altitude).filter((a): a is number => a !== null);
+
+  const speedDomain = [
+    Math.max(0, Math.min(...speeds) - 5),
+    Math.max(...speeds) + 5
+  ];
+
+  const altitudeDomain = altitudes.length > 0 ? [
+    Math.min(...altitudes) - 100,
+    Math.max(...altitudes) + 100
+  ] : [0, 100];
 
   return (
     <div className="flex flex-col h-full bg-bg-main overflow-y-auto">
@@ -207,7 +220,7 @@ export default function ActivityDetailsScreen() {
                   <LineChart data={chartData}>
                     <XAxis dataKey="time" hide />
                     <YAxis 
-                      domain={['auto', 'auto']} 
+                      domain={speedDomain} 
                       width={35} 
                       tick={{ fill: '#9aa0a6', fontSize: 10 }} 
                       axisLine={false}
@@ -228,10 +241,16 @@ export default function ActivityDetailsScreen() {
                 <h3 className="text-sm text-inactive mb-4">Wysokość (m n.p.m.)</h3>
                 <div className="h-48 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
+                    <AreaChart data={chartData}>
+                      <defs>
+                        <linearGradient id="colorAlt" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#4ade80" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#4ade80" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
                       <XAxis dataKey="time" hide />
                       <YAxis 
-                        domain={['auto', 'auto']} 
+                        domain={altitudeDomain} 
                         width={35} 
                         tick={{ fill: '#9aa0a6', fontSize: 10 }} 
                         axisLine={false}
@@ -241,8 +260,8 @@ export default function ActivityDetailsScreen() {
                         contentStyle={{ backgroundColor: '#2f3033', border: 'none', borderRadius: '8px', color: '#e8eaed' }}
                         itemStyle={{ color: '#4ade80' }}
                       />
-                      <Line type="monotone" dataKey="altitude" stroke="#4ade80" strokeWidth={2} dot={false} />
-                    </LineChart>
+                      <Area type="monotone" dataKey="altitude" stroke="#4ade80" strokeWidth={2} fillOpacity={1} fill="url(#colorAlt)" />
+                    </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </div>
