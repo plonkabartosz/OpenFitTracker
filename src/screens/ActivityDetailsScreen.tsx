@@ -26,11 +26,21 @@ const endIcon = new L.DivIcon({
 
 function MapController({ bounds, resetCounter }: { bounds: L.LatLngBounds | null, resetCounter: number }) {
   const map = useMap();
+  const [hasInitialFit, setHasInitialFit] = useState(false);
+
   useEffect(() => {
-    if (bounds) {
+    if (bounds && !hasInitialFit) {
+      map.fitBounds(bounds, { padding: [20, 20] });
+      setHasInitialFit(true);
+    }
+  }, [map, bounds, hasInitialFit]);
+
+  useEffect(() => {
+    if (bounds && resetCounter > 0) {
       map.fitBounds(bounds, { padding: [20, 20] });
     }
   }, [map, bounds, resetCounter]);
+
   return null;
 }
 
@@ -40,6 +50,7 @@ export default function ActivityDetailsScreen() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [resetCounter, setResetCounter] = useState(0);
+  const [showDeletePopup, setShowDeletePopup] = useState(false);
   
   const session = useLiveQuery(() => db.sessions.get(Number(id)), [id]);
 
@@ -48,7 +59,12 @@ export default function ActivityDetailsScreen() {
   const path = session.path || [];
   const hasPath = path.length > 0;
   
-  const bounds = hasPath ? L.latLngBounds(path.map(p => [p.lat, p.lng])) : null;
+  const bounds = React.useMemo(() => hasPath ? L.latLngBounds(path.map(p => [p.lat, p.lng])) : null, [path]);
+
+  const handleDelete = async () => {
+    await db.sessions.delete(Number(id));
+    navigate('/journal');
+  };
 
   // Calculate chart data
   const chartData = path.map((p, index) => {
@@ -74,6 +90,34 @@ export default function ActivityDetailsScreen() {
 
   return (
     <div className="flex flex-col h-full bg-bg-main overflow-y-auto">
+      {showDeletePopup && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-bg-nav p-6 rounded-2xl max-w-sm w-full shadow-2xl flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-danger/20 text-danger rounded-full flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-3xl">delete</span>
+            </div>
+            <h2 className="text-xl font-bold mb-2">Usuń aktywność</h2>
+            <p className="text-inactive text-sm mb-6">
+              Czy na pewno chcesz usunąć tę aktywność? Tej operacji nie można cofnąć.
+            </p>
+            <div className="flex gap-3 w-full">
+              <button 
+                onClick={() => setShowDeletePopup(false)}
+                className="flex-1 py-3 rounded-xl font-semibold bg-gray-800 text-white"
+              >
+                Anuluj
+              </button>
+              <button 
+                onClick={handleDelete}
+                className="flex-1 py-3 rounded-xl font-semibold bg-danger text-white"
+              >
+                Usuń
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="sticky top-0 z-50 bg-bg-main p-4 flex items-center border-b border-gray-800">
         <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-primary rounded-full transition-colors flex items-center justify-center">
           <span className="material-symbols-outlined">arrow_back</span>
@@ -181,7 +225,7 @@ export default function ActivityDetailsScreen() {
 
             {chartData.some(d => d.altitude !== null) && (
               <div className="bg-bg-nav p-4 rounded-2xl">
-                <h3 className="text-sm text-inactive mb-4">Wysokość</h3>
+                <h3 className="text-sm text-inactive mb-4">Wysokość (m n.p.m.)</h3>
                 <div className="h-48 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
@@ -205,6 +249,13 @@ export default function ActivityDetailsScreen() {
             )}
           </div>
         )}
+
+        <button 
+          onClick={() => setShowDeletePopup(true)}
+          className="w-full bg-transparent text-danger border border-danger font-bold py-3 rounded-xl transition-colors mt-4 mb-8"
+        >
+          Usuń aktywność
+        </button>
       </div>
     </div>
   );

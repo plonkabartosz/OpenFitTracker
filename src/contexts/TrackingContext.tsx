@@ -22,6 +22,19 @@ interface TrackingContextType {
 
 const TrackingContext = createContext<TrackingContextType | null>(null);
 
+async function fetchElevation(lat: number, lng: number): Promise<number | null> {
+  try {
+    const response = await fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lng}`);
+    const data = await response.json();
+    if (data && data.results && data.results[0]) {
+      return data.results[0].elevation;
+    }
+  } catch (err) {
+    console.error("Elevation fetch error", err);
+  }
+  return null;
+}
+
 export function TrackingProvider({ children }: { children: ReactNode }) {
   const [activityType, setActivityType] = useState(t.activity_types[0]);
   const [isRecording, setIsRecording] = useState(false);
@@ -38,10 +51,25 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
   const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const lastPosRef = useRef<LocationPoint | null>(null);
+  const lastElevationPosRef = useRef<{lat: number, lng: number} | null>(null);
 
   // Accelerometer logic
   const lastMotionTimeRef = useRef<number>(Date.now());
   const isMovingRef = useRef<boolean>(true);
+
+  const updateElevation = async (lat: number, lng: number) => {
+    if (lastElevationPosRef.current) {
+      const dist = calculateDistance(lastElevationPosRef.current.lat, lastElevationPosRef.current.lng, lat, lng);
+      if (dist < 5) return; // Only fetch if moved > 5m
+    }
+    const alt = await fetchElevation(lat, lng);
+    if (alt !== null) {
+      setCurrentAltitude(alt);
+      lastElevationPosRef.current = { lat, lng };
+      return alt;
+    }
+    return null;
+  };
 
   useEffect(() => {
     const handleMotion = (event: DeviceMotionEvent) => {
@@ -79,61 +107,67 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
         const newSpeed = pos.coords.speed;
         const newTs = pos.timestamp;
 
-        // Always update currentPos if NOT recording
-        if (!isRecording) {
+        const handleLocationUpdate = async () => {
+          const alt = await updateElevation(newLat, newLng);
+          const finalAlt = alt !== null ? alt : newAlt;
+          setCurrentAltitude(finalAlt);
+
+          // Always update currentPos if NOT recording
+          if (!isRecording) {
+            setCurrentPos([newLat, newLng]);
+            return;
+          }
+
+          // If recording, use sensor data to eliminate drift
+          if (!isMovingRef.current || isPaused) return;
+
           setCurrentPos([newLat, newLng]);
-          setCurrentAltitude(newAlt);
-          return;
-        }
 
-        // If recording, use sensor data to eliminate drift
-        if (!isMovingRef.current || isPaused) return;
+          if (newAcc > 20) return;
 
-        setCurrentPos([newLat, newLng]);
-        setCurrentAltitude(newAlt);
-
-        if (newAcc > 20) return;
-
-        setPath(prev => {
           const newPoint: LocationPoint = {
             lat: newLat,
             lng: newLng,
             timestamp: newTs,
             speed: newSpeed,
             accuracy: newAcc,
-            altitude: newAlt
+            altitude: finalAlt
           };
 
-          if (lastPosRef.current) {
-            const dist = calculateDistance(
-              lastPosRef.current.lat, lastPosRef.current.lng,
-              newLat, newLng
-            );
-            
-            if (dist > 1) {
-              setDistance(d => d + dist);
+          setPath(prev => {
+            if (lastPosRef.current) {
+              const dist = calculateDistance(
+                lastPosRef.current.lat, lastPosRef.current.lng,
+                newLat, newLng
+              );
               
-              if (newSpeed === null) {
-                const timeDiff = (newTs - lastPosRef.current.timestamp) / 1000;
-                if (timeDiff > 0) {
-                  setCurrentSpeed((dist / timeDiff) * 3.6);
+              if (dist > 1) {
+                setDistance(d => d + dist);
+                
+                if (newSpeed === null) {
+                  const timeDiff = (newTs - lastPosRef.current.timestamp) / 1000;
+                  if (timeDiff > 0) {
+                    setCurrentSpeed((dist / timeDiff) * 3.6);
+                  }
+                } else {
+                  setCurrentSpeed(newSpeed * 3.6);
                 }
-              } else {
-                setCurrentSpeed(newSpeed * 3.6);
+                lastPosRef.current = newPoint;
+                const newPath = [...prev, newPoint];
+                pathRef.current = newPath;
+                return newPath;
               }
+              return prev;
+            } else {
               lastPosRef.current = newPoint;
               const newPath = [...prev, newPoint];
               pathRef.current = newPath;
               return newPath;
             }
-            return prev;
-          } else {
-            lastPosRef.current = newPoint;
-            const newPath = [...prev, newPoint];
-            pathRef.current = newPath;
-            return newPath;
-          }
-        });
+          });
+        };
+
+        handleLocationUpdate();
       },
       (err) => console.error("Location error", err),
       { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
