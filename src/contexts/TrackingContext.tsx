@@ -39,6 +39,7 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
   const [activityType, setActivityType] = useState(t.activity_types[0]);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const isPausedRef = useRef(false);
   const [path, setPath] = useState<LocationPoint[]>([]);
   const pathRef = useRef<LocationPoint[]>([]);
   const [currentPos, setCurrentPos] = useState<[number, number] | null>(null);
@@ -145,7 +146,7 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
           if (!isRecording) return;
 
           // If paused, we don't save data or update distance
-          if (isPaused) return;
+          if (isPausedRef.current) return;
 
           // If recording and not paused, use sensor data to eliminate drift
           if (!isMovingRef.current) return;
@@ -212,6 +213,7 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
   const startTracking = async () => {
     setIsRecording(true);
     setIsPaused(false);
+    isPausedRef.current = false;
     shouldStartNewSegmentRef.current = false;
     startTimeRef.current = Date.now();
     setPath([]);
@@ -228,6 +230,7 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
 
   const pauseTracking = () => {
     setIsPaused(true);
+    isPausedRef.current = true;
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -237,6 +240,7 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
 
   const resumeTracking = () => {
     setIsPaused(false);
+    isPausedRef.current = false;
     shouldStartNewSegmentRef.current = true;
     
     timerRef.current = setInterval(() => {
