@@ -56,10 +56,6 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
   const lastElevationPosRef = useRef<{lat: number, lng: number} | null>(null);
   const shouldStartNewSegmentRef = useRef<boolean>(false);
 
-  // Accelerometer logic
-  const lastMotionTimeRef = useRef<number>(Date.now());
-  const isMovingRef = useRef<boolean>(true);
-
   const updateElevation = async (lat: number, lng: number) => {
     if (lastElevationPosRef.current) {
       const dist = calculateDistance(lastElevationPosRef.current.lat, lastElevationPosRef.current.lng, lat, lng);
@@ -73,30 +69,6 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
     }
     return null;
   };
-
-  useEffect(() => {
-    const handleMotion = (event: DeviceMotionEvent) => {
-      if (!event.accelerationIncludingGravity) return;
-      const { x, y, z } = event.accelerationIncludingGravity;
-      if (x === null || y === null || z === null) return;
-      
-      const magnitude = Math.sqrt(x*x + y*y + z*z);
-      // Gravity is ~9.8. If magnitude is significantly different from 9.8, we are moving
-      const diff = Math.abs(magnitude - 9.81);
-      
-      if (diff > 1.0) { // Threshold for movement
-        lastMotionTimeRef.current = Date.now();
-        isMovingRef.current = true;
-      } else {
-        if (Date.now() - lastMotionTimeRef.current > 10000) { // 10 seconds of no significant movement
-          isMovingRef.current = false;
-        }
-      }
-    };
-
-    window.addEventListener('devicemotion', handleMotion);
-    return () => window.removeEventListener('devicemotion', handleMotion);
-  }, []);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -147,9 +119,6 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
 
           // If paused, we don't save data or update distance
           if (isPausedRef.current) return;
-
-          // If recording and not paused, use sensor data to eliminate drift
-          if (!isMovingRef.current) return;
 
           if (newAcc > 20) return;
 

@@ -67,7 +67,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-[100dvh] mx-auto w-full">
       {showClearDataPopup && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-bg-nav p-6 rounded-2xl max-w-sm w-full shadow-2xl flex flex-col items-center text-center">
@@ -117,19 +117,19 @@ export default function ProfileScreen() {
         <h2 className="text-lg font-bold mb-2">Zarządzanie danymi</h2>
         <button 
           onClick={exportData}
-          className="w-full bg-bg-main text-primary border border-primary font-bold py-3 rounded-xl hover:bg-opacity-90 transition-colors"
+          className="w-full bg-primary text-bg-main font-bold py-3 rounded-xl hover:bg-opacity-90 transition-colors"
         >
           {t.export_data}
         </button>
         
-        <label className="w-full bg-bg-main text-primary border border-primary font-bold py-3 rounded-xl hover:bg-opacity-90 transition-colors text-center cursor-pointer">
+        <label className="w-full bg-primary text-bg-main font-bold py-3 rounded-xl hover:bg-opacity-90 transition-colors text-center cursor-pointer">
           {t.import_data}
           <input type="file" accept=".json" className="hidden" onChange={importData} />
         </label>
 
         <button 
           onClick={() => setShowClearDataPopup(true)}
-          className="w-full bg-transparent text-danger border border-danger font-bold py-3 rounded-xl transition-colors mt-4"
+          className="w-full bg-transparent text-danger border-2 border-danger font-bold py-3 rounded-xl transition-colors mt-4"
         >
           Wyczyść dane
         </button>

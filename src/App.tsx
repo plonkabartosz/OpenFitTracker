@@ -29,31 +29,33 @@ function PersistentTrackingNotification() {
   };
 
   return (
-    <div 
-      className="fixed top-0 left-0 right-0 bg-primary text-bg-main p-4 z-[9999] flex items-center justify-between shadow-lg cursor-pointer"
-      onClick={() => navigate('/tracking')}
-    >
-      <div className="flex flex-col">
-        <span className="font-bold text-sm uppercase">{activityType}</span>
-        <div className="flex gap-4 text-xs font-mono">
-          <span>{(distance / 1000).toFixed(2)} km</span>
-          <span>{formatTime(duration)}</span>
+      <div 
+        className="fixed top-0 left-0 right-0 w-full bg-primary text-bg-main z-[9999] shadow-lg cursor-pointer"
+        onClick={() => navigate('/tracking')}
+      >
+        <div className="max-w-[100dvh] mx-auto p-4 flex items-center justify-between w-full">
+          <div className="flex flex-col">
+            <span className="font-bold text-sm uppercase">{activityType}</span>
+            <div className="flex gap-4 text-xs font-mono">
+              <span>{(distance / 1000).toFixed(2)} km</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+          </div>
+          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+            {isPaused ? (
+              <button onClick={resumeTracking} className="w-10 h-10 bg-bg-main text-primary rounded-full flex items-center justify-center">
+                <span className="material-symbols-outlined">play_arrow</span>
+              </button>
+            ) : (
+              <button onClick={pauseTracking} className="w-10 h-10 bg-bg-main text-primary rounded-full flex items-center justify-center">
+                <span className="material-symbols-outlined">pause</span>
+              </button>
+            )}
+            <button onClick={stopTracking} className="w-10 h-10 bg-danger text-bg-main rounded-full flex items-center justify-center">
+              <span className="material-symbols-outlined">stop</span>
+            </button>
+          </div>
         </div>
-      </div>
-      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-        {isPaused ? (
-          <button onClick={resumeTracking} className="w-10 h-10 bg-bg-main text-primary rounded-full flex items-center justify-center">
-            <span className="material-symbols-outlined">play_arrow</span>
-          </button>
-        ) : (
-          <button onClick={pauseTracking} className="w-10 h-10 bg-bg-main text-primary rounded-full flex items-center justify-center">
-            <span className="material-symbols-outlined">pause</span>
-          </button>
-        )}
-        <button onClick={stopTracking} className="w-10 h-10 bg-danger text-bg-main rounded-full flex items-center justify-center">
-          <span className="material-symbols-outlined">stop</span>
-        </button>
-      </div>
     </div>
   );
 }
@@ -102,7 +104,7 @@ function Layout() {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-bg-main text-text-main">
+    <div className="flex flex-col h-[100dvh] bg-bg-main text-text-main relative w-full">
       <PersistentTrackingNotification />
       
       {showPermissionPopup && (
@@ -146,37 +148,41 @@ function Layout() {
       {!isTrackingScreen && (
         <>
           {!isRecording && (
-            <button 
-              onClick={handleStartTrackingClick}
-              className="fixed bottom-24 right-6 w-14 h-14 bg-primary text-bg-main rounded-full flex items-center justify-center shadow-lg transition-colors z-50"
-              aria-label={t.start_tracking}
-            >
-              <span className="material-symbols-outlined text-5xl">add</span>
-            </button>
+            <div className="fixed bottom-24 left-0 right-0 w-full max-w-[100dvh] mx-auto z-50 pointer-events-none flex justify-end px-6">
+              <button 
+                onClick={handleStartTrackingClick}
+                className="w-14 h-14 bg-primary text-bg-main rounded-full flex items-center justify-center shadow-lg transition-colors pointer-events-auto"
+                aria-label={t.start_tracking}
+              >
+                <span className="material-symbols-outlined text-5xl">add</span>
+              </button>
+            </div>
           )}
 
-          <nav className="fixed bottom-0 w-full bg-bg-nav border-t border-gray-800 flex justify-around items-center h-16 z-40">
-            <NavLink 
-              to="/" 
-              className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full ${isActive ? 'text-primary' : 'text-inactive'}`}
-            >
-              <span className="material-symbols-outlined">home</span>
-              <span className="text-xs mt-1">{t.nav_home}</span>
-            </NavLink>
-            <NavLink 
-              to="/journal" 
-              className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full ${isActive ? 'text-primary' : 'text-inactive'}`}
-            >
-              <span className="material-symbols-outlined">book</span>
-              <span className="text-xs mt-1">{t.nav_journal}</span>
-            </NavLink>
-            <NavLink 
-              to="/profile" 
-              className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full ${isActive ? 'text-primary' : 'text-inactive'}`}
-            >
-              <span className="material-symbols-outlined">person</span>
-              <span className="text-xs mt-1">{t.nav_profile}</span>
-            </NavLink>
+          <nav className="fixed bottom-0 w-full bg-bg-nav border-t border-gray-800 h-16 z-40">
+            <div className="max-w-[100dvh] mx-auto flex justify-around items-center h-full w-full">
+              <NavLink 
+                to="/" 
+                className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full ${isActive ? 'text-primary' : 'text-inactive'}`}
+              >
+                <span className="material-symbols-outlined">home</span>
+                <span className="text-xs mt-1">{t.nav_home}</span>
+              </NavLink>
+              <NavLink 
+                to="/journal" 
+                className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full ${isActive ? 'text-primary' : 'text-inactive'}`}
+              >
+                <span className="material-symbols-outlined">book</span>
+                <span className="text-xs mt-1">{t.nav_journal}</span>
+              </NavLink>
+              <NavLink 
+                to="/profile" 
+                className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full ${isActive ? 'text-primary' : 'text-inactive'}`}
+              >
+                <span className="material-symbols-outlined">person</span>
+                <span className="text-xs mt-1">{t.nav_profile}</span>
+              </NavLink>
+            </div>
           </nav>
         </>
       )}

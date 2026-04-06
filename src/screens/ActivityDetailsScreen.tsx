@@ -147,11 +147,13 @@ export default function ActivityDetailsScreen() {
         </div>
       )}
 
-      <div className="sticky top-0 z-50 bg-bg-main p-4 flex items-center border-b border-gray-800">
-        <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-primary rounded-full transition-colors flex items-center justify-center">
-          <span className="material-symbols-outlined">arrow_back</span>
-        </button>
-        <h1 className="text-xl font-bold ml-2">{t.session_details}</h1>
+      <div className="sticky top-0 z-50 bg-bg-main border-b border-gray-800">
+        <div className="max-w-[100dvh] mx-auto p-4 flex items-center w-full">
+          <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-primary rounded-full transition-colors flex items-center justify-center">
+            <span className="material-symbols-outlined">arrow_back</span>
+          </button>
+          <h1 className="text-xl font-bold ml-2">{t.session_details}</h1>
+        </div>
       </div>
 
       <div className="h-[320px] w-full relative">
@@ -192,7 +194,7 @@ export default function ActivityDetailsScreen() {
         )}
       </div>
 
-      <div className="p-6">
+      <div className="p-6 max-w-[100dvh] mx-auto w-full">
         <div className="mb-6">
           <div className="text-sm text-inactive mb-1">
             {format(session.startTime, 'd MMMM yyyy, HH:mm', { locale: pl })}

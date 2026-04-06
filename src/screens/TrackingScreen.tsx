@@ -84,13 +84,15 @@ export default function TrackingScreen() {
 
   return (
     <div className="flex flex-col h-full bg-bg-nav">
-      <div className="flex-1 relative z-0">
-        <button 
-          onClick={handleBack}
-          className="absolute top-4 left-4 z-[1000] bg-bg-nav p-2 rounded-full shadow-lg text-text-main flex items-center justify-center transition-colors"
-        >
-          <span className="material-symbols-outlined">arrow_back</span>
-        </button>
+      <div className="flex-1 relative z-0 w-[100vw] left-1/2 -translate-x-1/2">
+        <div className="absolute top-0 left-0 right-0 w-full max-w-[100dvh] mx-auto z-[1000] pointer-events-none">
+          <button 
+            onClick={handleBack}
+            className="absolute top-4 left-4 bg-bg-nav p-2 rounded-full shadow-lg text-text-main flex items-center justify-center transition-colors pointer-events-auto"
+          >
+            <span className="material-symbols-outlined">arrow_back</span>
+          </button>
+        </div>
         <MapContainer 
           center={mapCenter as [number, number]} 
           zoom={mapZoom} 
@@ -112,8 +114,9 @@ export default function TrackingScreen() {
         </MapContainer>
       </div>
 
-      <div className="shrink-0 bg-bg-nav p-6 flex flex-col justify-between z-10">
-        {!isRecording ? (
+      <div className="shrink-0 bg-bg-nav z-10 w-full">
+        <div className="max-w-[100dvh] mx-auto p-6 flex flex-col justify-between w-full">
+          {!isRecording ? (
           <div className="flex flex-col items-center justify-center gap-6">
             <div className="w-full relative">
               <label className="block text-sm text-inactive mb-2 text-center">{t.select_activity}</label>
@@ -201,6 +204,7 @@ export default function TrackingScreen() {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

@@ -48,7 +48,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-[100dvh] mx-auto w-full">
       <h1 className="text-2xl font-bold text-primary mb-6">{t.app_name}</h1>
       
       <div className="mb-6">
