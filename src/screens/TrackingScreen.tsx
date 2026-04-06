@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { t } from '../i18n';
 import { useTracking } from '../contexts/TrackingContext';
 import { useEffect, useState } from 'react';
+import { formatDuration, formatDistance } from '../utils/format';
 
 // Custom icon for current location
 const currentLocIcon = new L.DivIcon({
@@ -39,14 +40,6 @@ export default function TrackingScreen() {
     startTracking, pauseTracking, resumeTracking, stopTracking
   } = useTracking();
   const [countdown, setCountdown] = useState<number | null>(null);
-
-  const formatTime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
 
   const handleBack = () => {
     if (isRecording) {
@@ -156,21 +149,27 @@ export default function TrackingScreen() {
           <div className="flex flex-col justify-between gap-4">
             <div className="flex justify-between items-center">
               <div className="text-xl font-bold text-primary">{activityType}</div>
-              <div className="text-3xl font-mono font-bold">{formatTime(duration)}</div>
+              <div className="text-3xl font-mono font-bold">{formatDuration(duration * 1000)}</div>
             </div>
             
-            <div className="grid grid-cols-3 gap-4">
-              <div className="flex flex-col">
-                <span className="text-inactive text-sm">{t.distance}</span>
-                <span className="text-2xl font-bold">{(distance / 1000).toFixed(2)} <span className="text-sm text-inactive font-normal">km</span></span>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="flex flex-col items-start overflow-hidden">
+                <span className="text-inactive text-xs truncate w-full">{t.distance}</span>
+                <span className="text-xl font-bold truncate w-full">
+                  {formatDistance(distance).split(' ')[0]} <span className="text-xs text-inactive font-normal">{formatDistance(distance).split(' ')[1]}</span>
+                </span>
               </div>
-              <div className="flex flex-col items-center">
-                <span className="text-inactive text-sm">Wysokość</span>
-                <span className="text-2xl font-bold">{currentAltitude ? Math.round(currentAltitude) : '--'} <span className="text-sm text-inactive font-normal">m</span></span>
+              <div className="flex flex-col items-start overflow-hidden">
+                <span className="text-inactive text-xs truncate w-full">Wysokość</span>
+                <span className="text-xl font-bold truncate w-full">
+                  {currentAltitude ? Math.round(currentAltitude) : '--'} <span className="text-xs text-inactive font-normal">m n.p.m.</span>
+                </span>
               </div>
-              <div className="flex flex-col items-end">
-                <span className="text-inactive text-sm">{t.speed}</span>
-                <span className="text-2xl font-bold">{currentSpeed.toFixed(1)} <span className="text-sm text-inactive font-normal">km/h</span></span>
+              <div className="flex flex-col items-start overflow-hidden">
+                <span className="text-inactive text-xs truncate w-full">{t.speed}</span>
+                <span className="text-xl font-bold truncate w-full">
+                  {currentSpeed.toFixed(1)} <span className="text-xs text-inactive font-normal">km/h</span>
+                </span>
               </div>
             </div>
 
@@ -194,7 +193,7 @@ export default function TrackingScreen() {
               ) : (
                 <button 
                   onClick={pauseTracking}
-                  className="flex-1 bg-bg-main text-primary border border-primary font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                  className="flex-1 bg-bg-main text-primary border-2 border-primary font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
                 >
                   <span className="material-symbols-outlined">pause</span>
                 </button>

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { MapContainer, TileLayer, Polyline } from 'react-leaflet';
+import { formatDuration, formatDistance } from '../utils/format';
 
 export default function JournalScreen() {
   const navigate = useNavigate();
@@ -40,17 +41,17 @@ export default function JournalScreen() {
                 <div className="flex gap-4 text-sm">
                   <div>
                     <span className="text-inactive">{t.distance}: </span>
-                    <span className="font-medium">{(session.distanceMeters / 1000).toFixed(2)} km</span>
+                    <span className="font-medium">{formatDistance(session.distanceMeters)}</span>
                   </div>
                   <div>
                     <span className="text-inactive">{t.time}: </span>
                     <span className="font-medium">
-                      {Math.floor(session.durationMs / 60000)} min
+                      {formatDuration(session.durationMs)}
                     </span>
                   </div>
                 </div>
               </div>
-              <div className="w-16 h-16 bg-bg-main rounded-full flex items-center justify-center overflow-hidden relative pointer-events-none">
+              <div className="w-16 h-16 bg-bg-main rounded-full flex items-center justify-center overflow-hidden relative pointer-events-none z-0">
                 {session.path && session.path.length > 0 ? (
                   <MapContainer 
                     center={[session.path[0].lat, session.path[0].lng]} 

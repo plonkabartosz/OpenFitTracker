@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import React, { useState, useEffect } from 'react';
+import { formatDuration, formatDistance } from '../utils/format';
 
 const startIcon = new L.DivIcon({
   className: 'custom-div-icon',
@@ -205,7 +206,7 @@ export default function ActivityDetailsScreen() {
           <div className="flex flex-col">
             <span className="text-inactive text-sm mb-1">Czas aktywności</span>
             <span className="text-2xl font-bold text-text-main">
-              {Math.floor(session.durationMs / 60000)} <span className="text-sm text-inactive font-normal">min</span>
+              {formatDuration(session.durationMs)}
             </span>
           </div>
           
@@ -214,7 +215,7 @@ export default function ActivityDetailsScreen() {
           <div className="flex flex-col">
             <span className="text-inactive text-sm mb-1">{t.distance}</span>
             <span className="text-2xl font-bold text-text-main">
-              {(session.distanceMeters / 1000).toFixed(2)} <span className="text-sm text-inactive font-normal">km</span>
+              {formatDistance(session.distanceMeters).split(' ')[0]} <span className="text-sm text-inactive font-normal">{formatDistance(session.distanceMeters).split(' ')[1]}</span>
             </span>
           </div>
 
