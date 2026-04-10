@@ -148,7 +148,7 @@ export default function ActivityDetailsScreen() {
       )}
 
       <div className="sticky top-0 z-50 bg-bg-main border-b border-gray-800">
-        <div className="max-w-[100dvh] mx-auto p-4 flex items-center w-full">
+        <div className="md:max-w-[100dvh] mx-auto p-4 flex items-center w-full">
           <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-primary rounded-full transition-colors flex items-center justify-center">
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
@@ -194,7 +194,7 @@ export default function ActivityDetailsScreen() {
         )}
       </div>
 
-      <div className="p-6 max-w-[100dvh] mx-auto w-full">
+      <div className="p-6 md:max-w-[100dvh] mx-auto w-full">
         <div className="mb-6">
           <div className="text-sm text-inactive mb-1">
             {format(session.startTime, 'd MMMM yyyy, HH:mm', { locale: pl })}
@@ -289,12 +289,14 @@ export default function ActivityDetailsScreen() {
           </div>
         )}
 
-        <button 
-          onClick={() => setShowDeletePopup(true)}
-          className="w-full bg-transparent text-danger border border-danger font-bold py-3 rounded-xl transition-colors mt-4 mb-8"
-        >
-          Usuń aktywność
-        </button>
+        <div className="bg-bg-nav rounded-2xl p-6 mb-8 mt-4">
+          <button 
+            onClick={() => setShowDeletePopup(true)}
+            className="w-full bg-transparent text-danger border-2 border-danger font-bold py-3 rounded-xl transition-colors"
+          >
+            Usuń aktywność
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -16,7 +16,7 @@ export default function JournalScreen() {
   if (!sessions) return <div className="p-4">Loading...</div>;
 
   return (
-    <div className="p-6 max-w-[100dvh] mx-auto w-full">
+    <div className="p-6 md:max-w-[100dvh] mx-auto w-full">
       <h1 className="text-2xl font-bold text-primary mb-6">{t.nav_journal}</h1>
       
       {sessions.length === 0 ? (

@@ -18,6 +18,8 @@ interface TrackingContextType {
   pauseTracking: () => void;
   resumeTracking: () => void;
   stopTracking: () => Promise<void>;
+  isLocationEnabled: boolean;
+  enableLocationTracking: () => void;
 }
 
 const TrackingContext = createContext<TrackingContextType | null>(null);
@@ -36,6 +38,9 @@ async function fetchElevation(lat: number, lng: number): Promise<number | null> 
 }
 
 export function TrackingProvider({ children }: { children: ReactNode }) {
+  const [isLocationEnabled, setIsLocationEnabled] = useState(() => {
+    return localStorage.getItem('locationPromptHandled') === 'true';
+  });
   const [activityType, setActivityType] = useState(t.activity_types[0]);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -54,24 +59,34 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
   const lastPosRef = useRef<LocationPoint | null>(null);
   const lastUIPosRef = useRef<LocationPoint | null>(null);
   const lastElevationPosRef = useRef<{lat: number, lng: number} | null>(null);
+  const lastFetchedAltitudeRef = useRef<number | null>(null);
   const shouldStartNewSegmentRef = useRef<boolean>(false);
+
+  const enableLocationTracking = () => {
+    localStorage.setItem('locationPromptHandled', 'true');
+    setIsLocationEnabled(true);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(() => {}, () => {});
+    }
+  };
 
   const updateElevation = async (lat: number, lng: number) => {
     if (lastElevationPosRef.current) {
       const dist = calculateDistance(lastElevationPosRef.current.lat, lastElevationPosRef.current.lng, lat, lng);
-      if (dist < 5) return; // Only fetch if moved > 5m
+      if (dist < 5) return lastFetchedAltitudeRef.current; // Only fetch if moved > 5m
     }
     const alt = await fetchElevation(lat, lng);
     if (alt !== null) {
       setCurrentAltitude(alt);
       lastElevationPosRef.current = { lat, lng };
+      lastFetchedAltitudeRef.current = alt;
       return alt;
     }
-    return null;
+    return lastFetchedAltitudeRef.current;
   };
 
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation || !isLocationEnabled) return;
 
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
@@ -239,13 +254,15 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
     setDuration(0);
     setCurrentSpeed(0);
     shouldStartNewSegmentRef.current = false;
+    setActivityType(t.activity_types[0]);
   };
 
   return (
     <TrackingContext.Provider value={{
       isRecording, isPaused, activityType, setActivityType,
       path, currentPos, distance, duration, currentSpeed, currentAltitude,
-      startTracking, pauseTracking, resumeTracking, stopTracking
+      startTracking, pauseTracking, resumeTracking, stopTracking,
+      isLocationEnabled, enableLocationTracking
     }}>
       {children}
     </TrackingContext.Provider>

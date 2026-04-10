@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { t } from './i18n';
 import HomeScreen from './screens/HomeScreen';
 import JournalScreen from './screens/JournalScreen';
@@ -33,7 +33,7 @@ function PersistentTrackingNotification() {
         className="fixed top-0 left-0 right-0 w-full bg-primary text-bg-main z-[9999] shadow-lg cursor-pointer"
         onClick={() => navigate('/tracking')}
       >
-        <div className="max-w-[100dvh] mx-auto p-4 flex items-center justify-between w-full">
+        <div className="md:max-w-[100dvh] mx-auto p-4 flex items-center justify-between w-full">
           <div className="flex flex-col">
             <span className="font-bold text-sm uppercase">{activityType}</span>
             <div className="flex gap-4 text-xs font-mono">
@@ -63,24 +63,17 @@ function PersistentTrackingNotification() {
 function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isRecording } = useTracking();
+  const { isRecording, enableLocationTracking } = useTracking();
   const [showPermissionPopup, setShowPermissionPopup] = useState(false);
   
   // Hide bottom nav on tracking screen
   const isTrackingScreen = location.pathname === '/tracking';
 
   useEffect(() => {
-    const checkPerms = async () => {
-      try {
-        const perm = await navigator.permissions.query({ name: 'geolocation' });
-        if (perm.state === 'prompt') {
-          setShowPermissionPopup(true);
-        }
-      } catch (e) {
-        // Fallback if permissions API is not fully supported
-      }
-    };
-    checkPerms();
+    const handled = localStorage.getItem('locationPromptHandled');
+    if (!handled) {
+      setShowPermissionPopup(true);
+    }
   }, []);
 
   const handleStartTrackingClick = () => {
@@ -89,18 +82,12 @@ function Layout() {
 
   const requestPermissions = () => {
     setShowPermissionPopup(false);
-
-    // Request location permission by doing a dummy fetch
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        () => {},
-        () => {}
-      );
-    }
+    enableLocationTracking();
   };
 
   const cancelPermissions = () => {
     setShowPermissionPopup(false);
+    localStorage.setItem('locationPromptHandled', 'dismissed');
   };
 
   return (
@@ -148,19 +135,19 @@ function Layout() {
       {!isTrackingScreen && (
         <>
           {!isRecording && (
-            <div className="fixed bottom-24 left-0 right-0 w-full max-w-[100dvh] mx-auto z-50 pointer-events-none flex justify-end px-6">
+            <div className="fixed bottom-24 left-0 right-0 w-full md:max-w-[100dvh] mx-auto z-50 pointer-events-none flex justify-end px-6">
               <button 
                 onClick={handleStartTrackingClick}
                 className="w-14 h-14 bg-primary text-bg-main rounded-full flex items-center justify-center shadow-lg transition-colors pointer-events-auto"
                 aria-label={t.start_tracking}
               >
-                <span className="material-symbols-outlined text-5xl">add</span>
+                <span className="material-symbols-outlined text-[56px]">add</span>
               </button>
             </div>
           )}
 
           <nav className="fixed bottom-0 w-full bg-bg-nav border-t border-gray-800 h-16 z-40">
-            <div className="max-w-[100dvh] mx-auto flex justify-around items-center h-full w-full">
+            <div className="md:max-w-[100dvh] mx-auto flex justify-around items-center h-full w-full">
               <NavLink 
                 to="/" 
                 className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full ${isActive ? 'text-primary' : 'text-inactive'}`}
@@ -193,7 +180,7 @@ function Layout() {
 export default function App() {
   return (
     <TrackingProvider>
-      <Router basename="/OpenFitTracker">
+      <Router>
         <Layout />
       </Router>
     </TrackingProvider>

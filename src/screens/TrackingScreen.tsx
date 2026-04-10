@@ -40,6 +40,8 @@ export default function TrackingScreen() {
     startTracking, pauseTracking, resumeTracking, stopTracking
   } = useTracking();
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [customActivityName, setCustomActivityName] = useState('');
+  const [customActivityError, setCustomActivityError] = useState(false);
 
   const handleBack = () => {
     if (isRecording) {
@@ -50,6 +52,15 @@ export default function TrackingScreen() {
   };
 
   const handleStartWithCountdown = () => {
+    if (activityType === 'Inne') {
+      if (customActivityName.trim() === '') {
+        setCustomActivityError(true);
+        return;
+      }
+      setActivityType(customActivityName.trim());
+    }
+    setCustomActivityError(false);
+
     setCountdown(3);
     let count = 3;
     const interval = setInterval(() => {
@@ -85,7 +96,7 @@ export default function TrackingScreen() {
   return (
     <div className="flex flex-col h-full bg-bg-nav">
       <div className="flex-1 relative z-0 w-[100vw] left-1/2 -translate-x-1/2">
-        <div className="absolute top-0 left-0 right-0 w-full max-w-[100dvh] mx-auto z-[1000] pointer-events-none">
+        <div className="absolute top-0 left-0 right-0 w-full z-[1000] pointer-events-none">
           <button 
             onClick={handleBack}
             className="absolute top-4 left-4 bg-bg-nav p-2 rounded-full shadow-lg text-text-main flex items-center justify-center transition-colors pointer-events-auto"
@@ -115,14 +126,14 @@ export default function TrackingScreen() {
       </div>
 
       <div className="shrink-0 bg-bg-nav z-10 w-full">
-        <div className="max-w-[100dvh] mx-auto p-6 flex flex-col justify-between w-full">
+        <div className="md:max-w-[100dvh] mx-auto p-6 flex flex-col justify-between w-full">
           {!isRecording ? (
           <div className="flex flex-col items-center justify-center gap-6">
             <div className="w-full relative">
               <label className="block text-sm text-inactive mb-2 text-center">{t.select_activity}</label>
               <div className="relative">
                 <select 
-                  value={activityType}
+                  value={t.activity_types.includes(activityType) ? activityType : 'Inne'}
                   onChange={(e) => setActivityType(e.target.value)}
                   disabled={countdown !== null}
                   className="w-full bg-[#1a1b1e] text-text-main rounded-xl p-4 appearance-none focus:outline-none focus:ring-2 focus:ring-primary text-left disabled:opacity-50"
@@ -133,6 +144,21 @@ export default function TrackingScreen() {
                 </select>
                 <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-inactive">arrow_drop_down</span>
               </div>
+              {(activityType === 'Inne' || !t.activity_types.includes(activityType)) && (
+                <div className="w-full mt-2">
+                  <input
+                    type="text"
+                    value={customActivityName}
+                    onChange={(e) => {
+                      setCustomActivityName(e.target.value);
+                      if (e.target.value.trim() !== '') setCustomActivityError(false);
+                    }}
+                    placeholder="Wpisz nazwę aktywności..."
+                    className={`w-full bg-[#1a1b1e] text-text-main rounded-xl p-4 focus:outline-none focus:ring-2 ${customActivityError ? 'ring-2 ring-[#f28b82] border-[#f28b82]' : 'focus:ring-primary'} disabled:opacity-50`}
+                    disabled={countdown !== null}
+                  />
+                </div>
+              )}
             </div>
             {countdown !== null ? (
               <div className="w-16 h-16 bg-primary text-bg-main rounded-full flex items-center justify-center shadow-lg">
