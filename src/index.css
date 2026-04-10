@@ -21,7 +21,12 @@ body {
 
 /* Custom leaflet dark theme overrides if needed */
 .leaflet-container {
-  background-color: #202124 !important;
+  background-color: #1c2431 !important; /* Match the new dark blue ocean */
+}
+
+/* Apply a CSS filter to CartoDB Dark Matter to make it look like MapTiler Base Dark */
+.leaflet-tile-pane {
+  filter: brightness(1.2) sepia(100%) hue-rotate(185deg) saturate(250%) brightness(1.1) contrast(0.9);
 }
 
 /* Hide leaflet attribution for cleaner look, though technically against TOS for OSM, 
