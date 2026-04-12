@@ -1,31 +1,25 @@
-import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import Map, { Source, Layer, Marker, useMap } from 'react-map-gl/maplibre';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { useNavigate } from 'react-router-dom';
 import { t } from '../i18n';
 import { useTracking } from '../contexts/TrackingContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { formatDuration, formatDistance } from '../utils/format';
-
-// Custom icon for current location
-const currentLocIcon = new L.DivIcon({
-  className: 'custom-div-icon',
-  html: `<div style="background-color: #4285f4; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(66, 133, 244, 0.8);"></div>`,
-  iconSize: [16, 16],
-  iconAnchor: [8, 8]
-});
+import { useDeviceType } from '../hooks/useDeviceType';
+import { applyMapStyle } from '../utils/mapStyle';
 
 // Component to handle map centering
 function MapController({ center, isTracking }: { center: [number, number] | null, isTracking: boolean }) {
-  const map = useMap();
+  const { current: map } = useMap();
   useEffect(() => {
-    if (center) {
+    if (center && map) {
       if (isTracking) {
-        map.setView(center, map.getZoom(), { animate: true });
+        map.flyTo({ center: [center[1], center[0]], zoom: map.getZoom(), animate: true });
       } else if (map.getZoom() < 10) {
         // If we just got the location and we're zoomed out (e.g. showing Poland), zoom in to the user
-        map.setView(center, 16, { animate: true });
+        map.flyTo({ center: [center[1], center[0]], zoom: 16, animate: true });
       } else {
-        map.setView(center, map.getZoom(), { animate: true });
+        map.flyTo({ center: [center[1], center[0]], zoom: map.getZoom(), animate: true });
       }
     }
   }, [center, isTracking, map]);
@@ -34,6 +28,7 @@ function MapController({ center, isTracking }: { center: [number, number] | null
 
 export default function TrackingScreen() {
   const navigate = useNavigate();
+  const { isMobile } = useDeviceType();
   const {
     isRecording, isPaused, activityType, setActivityType,
     path, currentPos, distance, duration, currentSpeed, currentAltitude,
@@ -93,6 +88,17 @@ export default function TrackingScreen() {
     segments.push(currentSegment);
   }
 
+  const geojson: any = {
+    type: 'FeatureCollection',
+    features: segments.map(segment => ({
+      type: 'Feature',
+      geometry: {
+        type: 'LineString',
+        coordinates: segment.map(p => [p.lng, p.lat])
+      }
+    }))
+  };
+
   return (
     <div className="flex flex-col h-full bg-bg-nav">
       <div className="flex-1 relative z-0 w-[100vw] left-1/2 -translate-x-1/2">
@@ -104,29 +110,38 @@ export default function TrackingScreen() {
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
         </div>
-        <MapContainer 
-          center={mapCenter as [number, number]} 
-          zoom={mapZoom} 
-          style={{ height: '100%', width: '100%' }}
-          zoomControl={false}
-          dragging={!isRecording || isPaused} // Lock map when recording and not paused
+        <Map
+          initialViewState={{
+            longitude: mapCenter[1],
+            latitude: mapCenter[0],
+            zoom: mapZoom
+          }}
+          style={{ width: '100%', height: '100%' }}
+          mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+          onLoad={(e) => applyMapStyle(e.target)}
+          interactive={!isRecording || isPaused}
         >
-          <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          />
           {currentPos && <MapController center={currentPos} isTracking={isRecording && !isPaused} />}
-          {segments.map((segment, idx) => (
-            <Polyline key={idx} positions={segment.map(p => [p.lat, p.lng])} color="#8ab4f8" weight={4} />
-          ))}
+          <Source id="route" type="geojson" data={geojson}>
+            <Layer
+              id="route-layer"
+              type="line"
+              paint={{
+                'line-color': '#8ab4f8',
+                'line-width': 4
+              }}
+            />
+          </Source>
           {currentPos && (
-            <Marker position={currentPos} icon={currentLocIcon} />
+            <Marker longitude={currentPos[1]} latitude={currentPos[0]}>
+              <div style={{ backgroundColor: '#4285f4', width: '16px', height: '16px', borderRadius: '50%', border: '3px solid white', boxShadow: '0 0 10px rgba(66, 133, 244, 0.8)' }}></div>
+            </Marker>
           )}
-        </MapContainer>
+        </Map>
       </div>
 
       <div className="shrink-0 bg-bg-nav z-10 w-full">
-        <div className="md:max-w-[100dvh] mx-auto p-6 flex flex-col justify-between w-full">
+        <div className={`${!isMobile ? 'max-w-[100dvh]' : ''} mx-auto p-6 flex flex-col justify-between w-full`}>
           {!isRecording ? (
           <div className="flex flex-col items-center justify-center gap-6">
             <div className="w-full relative">

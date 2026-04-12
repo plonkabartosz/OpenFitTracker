@@ -3,42 +3,30 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { t } from '../i18n';
 import { calculateDistance } from '../utils/geo';
-import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import Map, { Source, Layer, Marker, useMap } from 'react-map-gl/maplibre';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import React, { useState, useEffect } from 'react';
 import { formatDuration, formatDistance } from '../utils/format';
+import { useDeviceType } from '../hooks/useDeviceType';
+import { applyMapStyle } from '../utils/mapStyle';
 
-const startIcon = new L.DivIcon({
-  className: 'custom-div-icon',
-  html: `<div style="background-color: #4ade80; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>`,
-  iconSize: [12, 12],
-  iconAnchor: [6, 6]
-});
-
-const endIcon = new L.DivIcon({
-  className: 'custom-div-icon',
-  html: `<div style="background-color: #f28b82; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>`,
-  iconSize: [12, 12],
-  iconAnchor: [6, 6]
-});
-
-function MapController({ bounds, resetCounter }: { bounds: L.LatLngBounds | null, resetCounter: number }) {
-  const map = useMap();
+function MapController({ bounds, resetCounter }: { bounds: any, resetCounter: number }) {
+  const { current: map } = useMap();
   const [hasInitialFit, setHasInitialFit] = useState(false);
 
   useEffect(() => {
-    if (bounds && !hasInitialFit) {
-      map.fitBounds(bounds, { padding: [20, 20] });
+    if (bounds && map && !hasInitialFit) {
+      map.fitBounds(bounds, { padding: 20 });
       setHasInitialFit(true);
     }
   }, [map, bounds, hasInitialFit]);
 
   useEffect(() => {
-    if (bounds && resetCounter > 0) {
-      map.fitBounds(bounds, { padding: [20, 20] });
+    if (bounds && map && resetCounter > 0) {
+      map.fitBounds(bounds, { padding: 20 });
     }
   }, [map, bounds, resetCounter]);
 
@@ -50,6 +38,7 @@ const SEPARATOR_COLOR = '#3c4043';
 export default function ActivityDetailsScreen() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isMobile } = useDeviceType();
   const [resetCounter, setResetCounter] = useState(0);
   const [showDeletePopup, setShowDeletePopup] = useState(false);
   
@@ -58,7 +47,15 @@ export default function ActivityDetailsScreen() {
   const path = session?.path || [];
   const hasPath = path.length > 0;
   
-  const bounds = React.useMemo(() => hasPath ? L.latLngBounds(path.map(p => [p.lat, p.lng])) : null, [path, hasPath]);
+  const bounds = React.useMemo(() => {
+    if (!hasPath) return null;
+    const lngs = path.map(p => p.lng);
+    const lats = path.map(p => p.lat);
+    return [
+      [Math.min(...lngs), Math.min(...lats)],
+      [Math.max(...lngs), Math.max(...lats)]
+    ];
+  }, [path, hasPath]);
 
   // Split path into segments based on isSegmentStart
   const segments: any[][] = [];
@@ -74,6 +71,17 @@ export default function ActivityDetailsScreen() {
   if (currentSegment.length > 0) {
     segments.push(currentSegment);
   }
+
+  const geojson: any = {
+    type: 'FeatureCollection',
+    features: segments.map(segment => ({
+      type: 'Feature',
+      geometry: {
+        type: 'LineString',
+        coordinates: segment.map(p => [p.lng, p.lat])
+      }
+    }))
+  };
 
   if (!session) return <div className="p-4">Loading...</div>;
 
@@ -148,7 +156,7 @@ export default function ActivityDetailsScreen() {
       )}
 
       <div className="sticky top-0 z-50 bg-bg-main border-b border-gray-800">
-        <div className="md:max-w-[100dvh] mx-auto p-4 flex items-center w-full">
+        <div className={`${!isMobile ? 'max-w-[100dvh]' : ''} mx-auto p-4 flex items-center w-full`}>
           <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-primary rounded-full transition-colors flex items-center justify-center">
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
@@ -159,23 +167,34 @@ export default function ActivityDetailsScreen() {
       <div className="h-[320px] w-full relative">
         {hasPath ? (
           <>
-            <MapContainer 
-              bounds={bounds || undefined}
+            <Map
+              initialViewState={{
+                bounds: bounds as any,
+                fitBoundsOptions: { padding: 20 }
+              }}
               style={{ height: '320px', width: '100%' }}
-              zoomControl={false}
-              dragging={true}
+              mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+              onLoad={(e) => applyMapStyle(e.target)}
+              interactive={true}
             >
-              <TileLayer
-                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-              />
-              {segments.map((segment, idx) => (
-                <Polyline key={idx} positions={segment.map(p => [p.lat, p.lng])} color="#8ab4f8" weight={4} />
-              ))}
-              <Marker position={[path[0].lat, path[0].lng]} icon={startIcon} />
-              <Marker position={[path[path.length - 1].lat, path[path.length - 1].lng]} icon={endIcon} />
+              <Source id="route" type="geojson" data={geojson}>
+                <Layer
+                  id="route-layer"
+                  type="line"
+                  paint={{
+                    'line-color': '#8ab4f8',
+                    'line-width': 4
+                  }}
+                />
+              </Source>
+              <Marker longitude={path[0].lng} latitude={path[0].lat}>
+                <div style={{ backgroundColor: '#4ade80', width: '12px', height: '12px', borderRadius: '50%', border: '2px solid white' }}></div>
+              </Marker>
+              <Marker longitude={path[path.length - 1].lng} latitude={path[path.length - 1].lat}>
+                <div style={{ backgroundColor: '#f28b82', width: '12px', height: '12px', borderRadius: '50%', border: '2px solid white' }}></div>
+              </Marker>
               <MapController bounds={bounds} resetCounter={resetCounter} />
-            </MapContainer>
+            </Map>
             
             <div className="absolute bottom-4 left-4 z-[1000]">
               <button 
@@ -194,7 +213,7 @@ export default function ActivityDetailsScreen() {
         )}
       </div>
 
-      <div className="p-6 md:max-w-[100dvh] mx-auto w-full">
+      <div className={`p-6 ${!isMobile ? 'max-w-[100dvh]' : ''} mx-auto w-full`}>
         <div className="mb-6">
           <div className="text-sm text-inactive mb-1">
             {format(session.startTime, 'd MMMM yyyy, HH:mm', { locale: pl })}

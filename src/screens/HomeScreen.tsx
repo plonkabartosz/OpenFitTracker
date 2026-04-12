@@ -2,8 +2,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { t } from '../i18n';
 import { useState } from 'react';
+import { useDeviceType } from '../hooks/useDeviceType';
 
 export default function HomeScreen() {
+  const { isMobile } = useDeviceType();
   const [range, setRange] = useState<'today' | 'month' | 'year' | 'all'>('month');
 
   const sessions = useLiveQuery(
@@ -48,7 +50,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <div className="p-6 md:max-w-[100dvh] mx-auto w-full">
+    <div className={`p-6 ${!isMobile ? 'max-w-[100dvh]' : ''} mx-auto w-full`}>
       <h1 className="text-2xl font-bold text-primary mb-6">{t.app_name}</h1>
       
       <div className="mb-6">

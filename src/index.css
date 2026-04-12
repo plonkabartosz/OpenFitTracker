@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "leaflet/dist/leaflet.css";
 
 @theme {
   --color-bg-main: #202124;
@@ -17,24 +16,4 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-}
-
-/* Custom leaflet dark theme overrides if needed */
-.leaflet-container {
-  background-color: #1c2431 !important; /* Match the new dark blue ocean */
-}
-
-/* Apply a CSS filter to CartoDB Dark Matter to make it look like MapTiler Base Dark */
-.leaflet-tile-pane {
-  filter: brightness(1.2) sepia(100%) hue-rotate(185deg) saturate(250%) brightness(1.1) contrast(0.9);
-}
-
-/* Hide leaflet attribution for cleaner look, though technically against TOS for OSM, 
-   we can keep a small one or just use standard. Let's keep it small. */
-.leaflet-control-attribution {
-  background: rgba(32, 33, 36, 0.7) !important;
-  color: #9aa0a6 !important;
-}
-.leaflet-control-attribution a {
-  color: #8ab4f8 !important;
 }

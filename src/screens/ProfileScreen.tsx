@@ -2,9 +2,11 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { t } from '../i18n';
 import React, { useState, useEffect } from 'react';
+import { useDeviceType } from '../hooks/useDeviceType';
 
 export default function ProfileScreen() {
   const profile = useLiveQuery(() => db.profile.get(1));
+  const { isMobile } = useDeviceType();
   const [username, setUsername] = useState('');
   const [showClearDataPopup, setShowClearDataPopup] = useState(false);
 
@@ -67,7 +69,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <div className="p-6 md:max-w-[100dvh] mx-auto w-full">
+    <div className={`p-6 ${!isMobile ? 'max-w-[100dvh]' : ''} mx-auto w-full`}>
       {showClearDataPopup && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-bg-nav p-6 rounded-2xl max-w-sm w-full shadow-2xl flex flex-col items-center text-center">

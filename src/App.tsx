@@ -12,9 +12,11 @@ import ProfileScreen from './screens/ProfileScreen';
 import TrackingScreen from './screens/TrackingScreen';
 import ActivityDetailsScreen from './screens/ActivityDetailsScreen';
 import { TrackingProvider, useTracking } from './contexts/TrackingContext';
+import { useDeviceType } from './hooks/useDeviceType';
 
 function PersistentTrackingNotification() {
   const { isRecording, isPaused, activityType, distance, duration, pauseTracking, resumeTracking, stopTracking } = useTracking();
+  const { isMobile } = useDeviceType();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -33,7 +35,7 @@ function PersistentTrackingNotification() {
         className="fixed top-0 left-0 right-0 w-full bg-primary text-bg-main z-[9999] shadow-lg cursor-pointer"
         onClick={() => navigate('/tracking')}
       >
-        <div className="md:max-w-[100dvh] mx-auto p-4 flex items-center justify-between w-full">
+        <div className={`${!isMobile ? 'max-w-[100dvh]' : ''} mx-auto p-4 flex items-center justify-between w-full`}>
           <div className="flex flex-col">
             <span className="font-bold text-sm uppercase">{activityType}</span>
             <div className="flex gap-4 text-xs font-mono">
@@ -64,6 +66,7 @@ function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isRecording, enableLocationTracking } = useTracking();
+  const { isMobile } = useDeviceType();
   const [showPermissionPopup, setShowPermissionPopup] = useState(false);
   
   // Hide bottom nav on tracking screen
@@ -135,7 +138,7 @@ function Layout() {
       {!isTrackingScreen && (
         <>
           {!isRecording && (
-            <div className="fixed bottom-24 left-0 right-0 w-full md:max-w-[100dvh] mx-auto z-50 pointer-events-none flex justify-end px-6">
+            <div className={`fixed bottom-24 left-0 right-0 w-full ${!isMobile ? 'max-w-[100dvh]' : ''} mx-auto z-50 pointer-events-none flex justify-end px-6`}>
               <button 
                 onClick={handleStartTrackingClick}
                 className="w-14 h-14 bg-primary text-bg-main rounded-full flex items-center justify-center shadow-lg transition-colors pointer-events-auto"
@@ -147,7 +150,7 @@ function Layout() {
           )}
 
           <nav className="fixed bottom-0 w-full bg-bg-nav border-t border-gray-800 h-16 z-40">
-            <div className="md:max-w-[100dvh] mx-auto flex justify-around items-center h-full w-full">
+            <div className={`${!isMobile ? 'max-w-[100dvh]' : ''} mx-auto flex justify-around items-center h-full w-full`}>
               <NavLink 
                 to="/" 
                 className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full ${isActive ? 'text-primary' : 'text-inactive'}`}

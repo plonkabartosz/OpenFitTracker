@@ -4,11 +4,15 @@ import { t } from '../i18n';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { MapContainer, TileLayer, Polyline } from 'react-leaflet';
+import Map, { Source, Layer } from 'react-map-gl/maplibre';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { formatDuration, formatDistance } from '../utils/format';
+import { useDeviceType } from '../hooks/useDeviceType';
+import { applyMapStyle } from '../utils/mapStyle';
 
 export default function JournalScreen() {
   const navigate = useNavigate();
+  const { isMobile } = useDeviceType();
   const sessions = useLiveQuery(
     () => db.sessions.where('isFinished').equals(1).reverse().sortBy('startTime')
   );
@@ -16,7 +20,7 @@ export default function JournalScreen() {
   if (!sessions) return <div className="p-4">Loading...</div>;
 
   return (
-    <div className="p-6 md:max-w-[100dvh] mx-auto w-full">
+    <div className={`p-6 ${!isMobile ? 'max-w-[100dvh]' : ''} mx-auto w-full`}>
       <h1 className="text-2xl font-bold text-primary mb-6">{t.nav_journal}</h1>
       
       {sessions.length === 0 ? (
@@ -53,20 +57,35 @@ export default function JournalScreen() {
               </div>
               <div className="w-16 h-16 bg-bg-main rounded-full flex items-center justify-center overflow-hidden relative pointer-events-none z-0">
                 {session.path && session.path.length > 0 ? (
-                  <MapContainer 
-                    center={[session.path[0].lat, session.path[0].lng]} 
-                    zoom={13} 
-                    style={{ height: '100%', width: '100%' }}
-                    zoomControl={false}
-                    dragging={false}
-                    scrollWheelZoom={false}
-                    doubleClickZoom={false}
-                    touchZoom={false}
+                  <Map
+                    initialViewState={{
+                      longitude: session.path[0].lng,
+                      latitude: session.path[0].lat,
+                      zoom: 13
+                    }}
+                    style={{ width: '100%', height: '100%' }}
+                    mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+                    onLoad={(e) => applyMapStyle(e.target)}
+                    interactive={false}
                     attributionControl={false}
                   >
-                    <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-                    <Polyline positions={session.path.map(p => [p.lat, p.lng])} color="#8ab4f8" weight={3} />
-                  </MapContainer>
+                    <Source id={`route-${session.id}`} type="geojson" data={{
+                      type: 'Feature',
+                      geometry: {
+                        type: 'LineString',
+                        coordinates: session.path.map(p => [p.lng, p.lat])
+                      }
+                    }}>
+                      <Layer
+                        id={`route-layer-${session.id}`}
+                        type="line"
+                        paint={{
+                          'line-color': '#8ab4f8',
+                          'line-width': 3
+                        }}
+                      />
+                    </Source>
+                  </Map>
                 ) : (
                   <span className="material-symbols-outlined text-inactive">map</span>
                 )}
