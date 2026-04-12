@@ -7,7 +7,7 @@ import { useEffect, useState, useRef } from 'react';
 import { formatDuration, formatDistance } from '../utils/format';
 import { useDeviceType } from '../hooks/useDeviceType';
 import customMapStyle from '../openstreetmap.json';
-import { MdMyLocation } from 'react-icons/md';
+import { MdMyLocation, MdCompassCalibration } from 'react-icons/md';
 import { CustomAttribution } from '../components/CustomAttribution';
 
 export default function TrackingScreen() {
@@ -25,6 +25,7 @@ export default function TrackingScreen() {
   const mapRef = useRef<MapRef>(null);
   const [isLocked, setIsLocked] = useState(true);
   const [hasInitialGpsLock, setHasInitialGpsLock] = useState(false);
+  const [bearing, setBearing] = useState(0);
 
   useEffect(() => {
     if (currentPos && mapRef.current) {
@@ -143,6 +144,9 @@ export default function TrackingScreen() {
           mapStyle={customMapStyle as any}
           interactive={true}
           attributionControl={false}
+          onMove={(e) => {
+            setBearing(e.viewState.bearing);
+          }}
           onMoveStart={(e) => {
             if (e.originalEvent) {
               setIsLocked(false);
@@ -165,7 +169,24 @@ export default function TrackingScreen() {
             </Marker>
           )}
         </Map>
-        <div className="absolute bottom-4 left-4 z-[1000] pointer-events-auto">
+        <div className="absolute bottom-4 left-4 z-[1000] pointer-events-auto flex flex-col gap-2">
+          <button 
+            onClick={() => {
+              if (mapRef.current) {
+                mapRef.current.flyTo({
+                  bearing: 0,
+                  animate: true,
+                  duration: 1000
+                });
+              }
+            }}
+            className="w-10 h-10 rounded-full shadow-lg flex items-center justify-center bg-bg-nav text-text-main"
+            title="Resetuj orientację"
+          >
+            <div style={{ transform: `rotate(${-bearing}deg)` }}>
+              <MdCompassCalibration size={24} />
+            </div>
+          </button>
           <button 
             onClick={handleResetView}
             className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center ${isLocked ? 'bg-bg-nav text-primary' : 'bg-bg-nav text-text-main'}`}
