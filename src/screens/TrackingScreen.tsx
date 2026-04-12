@@ -1,4 +1,4 @@
-import Map, { Source, Layer, Marker, useMap } from 'react-map-gl/maplibre';
+import Map, { Source, Layer, Marker, MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useNavigate } from 'react-router-dom';
 import { t } from '../i18n';
@@ -7,24 +7,8 @@ import { useEffect, useState, useRef } from 'react';
 import { formatDuration, formatDistance } from '../utils/format';
 import { useDeviceType } from '../hooks/useDeviceType';
 import customMapStyle from '../openstreetmap.json';
-
-// Component to handle map centering
-function MapController({ center, isTracking }: { center: [number, number] | null, isTracking: boolean }) {
-  const { current: map } = useMap();
-  useEffect(() => {
-    if (center && map) {
-      if (isTracking) {
-        map.flyTo({ center: [center[1], center[0]], zoom: map.getZoom(), animate: true });
-      } else if (map.getZoom() < 10) {
-        // If we just got the location and we're zoomed out (e.g. showing Poland), zoom in to the user
-        map.flyTo({ center: [center[1], center[0]], zoom: 16, animate: true });
-      } else {
-        map.flyTo({ center: [center[1], center[0]], zoom: map.getZoom(), animate: true });
-      }
-    }
-  }, [center, isTracking, map]);
-  return null;
-}
+import { MdMyLocation } from 'react-icons/md';
+import { CustomAttribution } from '../components/CustomAttribution';
 
 export default function TrackingScreen() {
   const navigate = useNavigate();
@@ -37,6 +21,44 @@ export default function TrackingScreen() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [customActivityName, setCustomActivityName] = useState('');
   const [customActivityError, setCustomActivityError] = useState(false);
+
+  const mapRef = useRef<MapRef>(null);
+  const [isLocked, setIsLocked] = useState(true);
+  const [hasInitialGpsLock, setHasInitialGpsLock] = useState(false);
+
+  useEffect(() => {
+    if (currentPos && mapRef.current) {
+      if (!hasInitialGpsLock) {
+        // First time we get GPS, fly to it with zoom 16
+        mapRef.current.flyTo({
+          center: [currentPos[1], currentPos[0]],
+          zoom: 16,
+          animate: true,
+          duration: 1000
+        });
+        setHasInitialGpsLock(true);
+        setIsLocked(true);
+      } else if (isLocked) {
+        // Subsequent updates, keep current zoom
+        mapRef.current.flyTo({
+          center: [currentPos[1], currentPos[0]],
+          animate: true,
+          duration: 1000
+        });
+      }
+    }
+  }, [currentPos, isLocked, hasInitialGpsLock]);
+
+  const handleResetView = () => {
+    setIsLocked(true);
+    if (currentPos && mapRef.current) {
+      mapRef.current.flyTo({
+        center: [currentPos[1], currentPos[0]],
+        animate: true,
+        duration: 1000
+      });
+    }
+  };
 
   const handleBack = () => {
     if (isRecording) {
@@ -111,6 +133,7 @@ export default function TrackingScreen() {
           </button>
         </div>
         <Map
+          ref={mapRef}
           initialViewState={{
             longitude: mapCenter[1],
             latitude: mapCenter[0],
@@ -118,9 +141,14 @@ export default function TrackingScreen() {
           }}
           style={{ width: '100%', height: '100%' }}
           mapStyle={customMapStyle as any}
-          interactive={!isRecording || isPaused}
+          interactive={true}
+          attributionControl={false}
+          onMoveStart={(e) => {
+            if (e.originalEvent) {
+              setIsLocked(false);
+            }
+          }}
         >
-          {currentPos && <MapController center={currentPos} isTracking={isRecording && !isPaused} />}
           <Source id="route" type="geojson" data={geojson}>
             <Layer
               id="route-layer"
@@ -137,6 +165,16 @@ export default function TrackingScreen() {
             </Marker>
           )}
         </Map>
+        <div className="absolute bottom-4 left-4 z-[1000] pointer-events-auto">
+          <button 
+            onClick={handleResetView}
+            className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center ${isLocked ? 'bg-bg-nav text-primary' : 'bg-bg-nav text-text-main'}`}
+            title="Resetuj widok"
+          >
+            <MdMyLocation size={24} />
+          </button>
+        </div>
+        <CustomAttribution />
       </div>
 
       <div className="shrink-0 bg-bg-nav z-10 w-full">

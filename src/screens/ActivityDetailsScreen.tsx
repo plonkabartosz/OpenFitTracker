@@ -12,6 +12,8 @@ import React, { useState, useEffect } from 'react';
 import { formatDuration, formatDistance } from '../utils/format';
 import { useDeviceType } from '../hooks/useDeviceType';
 import customMapStyle from '../openstreetmap.json';
+import { MdMyLocation } from 'react-icons/md';
+import { CustomAttribution } from '../components/CustomAttribution';
 
 function MapController({ bounds, resetCounter }: { bounds: any, resetCounter: number }) {
   const { current: map } = useMap();
@@ -175,6 +177,7 @@ export default function ActivityDetailsScreen() {
               style={{ height: '320px', width: '100%' }}
               mapStyle={customMapStyle as any}
               interactive={true}
+              attributionControl={false}
             >
               <Source id="route" type="geojson" data={geojson}>
                 <Layer
@@ -198,12 +201,13 @@ export default function ActivityDetailsScreen() {
             <div className="absolute bottom-4 left-4 z-[1000]">
               <button 
                 onClick={() => setResetCounter(prev => prev + 1)}
-                className="w-10 h-10 bg-bg-nav text-primary rounded-full shadow-lg flex items-center justify-center hover:bg-gray-800 transition-colors"
+                className="w-10 h-10 bg-bg-nav text-primary rounded-full shadow-lg flex items-center justify-center"
                 title="Resetuj widok"
               >
-                <span className="material-symbols-outlined">center_focus_strong</span>
+                <MdMyLocation size={24} />
               </button>
             </div>
+            <CustomAttribution />
           </>
         ) : (
           <div className="w-full h-[320px] flex items-center justify-center bg-gray-800 text-inactive">

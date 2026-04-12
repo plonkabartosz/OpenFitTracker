@@ -329,7 +329,8 @@
   "sources": {
     "openmaptiles": {
       "url": "https://tiles.openfreemap.org/planet/tiles.json",
-      "type": "vector"
+      "type": "vector",
+      "attribution": "MapLibre | © MapTiler © OpenStreetMap contributors"
     }
   },
   "sprite": "https://tiles.openfreemap.org/sprites/ofm_f384/ofm",
