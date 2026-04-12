@@ -11,7 +11,7 @@ import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveCont
 import React, { useState, useEffect } from 'react';
 import { formatDuration, formatDistance } from '../utils/format';
 import { useDeviceType } from '../hooks/useDeviceType';
-import { applyMapStyle } from '../utils/mapStyle';
+import customMapStyle from '../openstreetmap.json';
 
 function MapController({ bounds, resetCounter }: { bounds: any, resetCounter: number }) {
   const { current: map } = useMap();
@@ -173,8 +173,7 @@ export default function ActivityDetailsScreen() {
                 fitBoundsOptions: { padding: 20 }
               }}
               style={{ height: '320px', width: '100%' }}
-              mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
-              onLoad={(e) => applyMapStyle(e.target)}
+              mapStyle={customMapStyle as any}
               interactive={true}
             >
               <Source id="route" type="geojson" data={geojson}>

@@ -8,7 +8,7 @@ import Map, { Source, Layer } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { formatDuration, formatDistance } from '../utils/format';
 import { useDeviceType } from '../hooks/useDeviceType';
-import { applyMapStyle } from '../utils/mapStyle';
+import customMapStyle from '../openstreetmap.json';
 
 export default function JournalScreen() {
   const navigate = useNavigate();
@@ -64,8 +64,7 @@ export default function JournalScreen() {
                       zoom: 13
                     }}
                     style={{ width: '100%', height: '100%' }}
-                    mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
-                    onLoad={(e) => applyMapStyle(e.target)}
+                    mapStyle={customMapStyle as any}
                     interactive={false}
                     attributionControl={false}
                   >
