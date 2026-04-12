@@ -3,16 +3,16 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { t } from '../i18n';
 import { calculateDistance } from '../utils/geo';
-import Map, { Source, Layer, Marker, useMap } from 'react-map-gl/maplibre';
+import Map, { Source, Layer, Marker, useMap, MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { formatDuration, formatDistance } from '../utils/format';
 import { useDeviceType } from '../hooks/useDeviceType';
 import customMapStyle from '../openstreetmap.json';
-import { MdMyLocation } from 'react-icons/md';
+import { MdMyLocation, MdCompassCalibration } from 'react-icons/md';
 import { CustomAttribution } from '../components/CustomAttribution';
 
 function MapController({ bounds, resetCounter }: { bounds: any, resetCounter: number }) {
@@ -43,6 +43,8 @@ export default function ActivityDetailsScreen() {
   const { isMobile } = useDeviceType();
   const [resetCounter, setResetCounter] = useState(0);
   const [showDeletePopup, setShowDeletePopup] = useState(false);
+  const mapRef = useRef<MapRef>(null);
+  const [bearing, setBearing] = useState(0);
   
   const session = useLiveQuery(() => db.sessions.get(Number(id)), [id]);
 
@@ -170,6 +172,7 @@ export default function ActivityDetailsScreen() {
         {hasPath ? (
           <>
             <Map
+              ref={mapRef}
               initialViewState={{
                 bounds: bounds as any,
                 fitBoundsOptions: { padding: 20 }
@@ -178,6 +181,9 @@ export default function ActivityDetailsScreen() {
               mapStyle={customMapStyle as any}
               interactive={true}
               attributionControl={false}
+              onMove={(e) => {
+                setBearing(e.viewState.bearing);
+              }}
             >
               <Source id="route" type="geojson" data={geojson}>
                 <Layer
@@ -198,10 +204,27 @@ export default function ActivityDetailsScreen() {
               <MapController bounds={bounds} resetCounter={resetCounter} />
             </Map>
             
-            <div className="absolute bottom-4 left-4 z-[1000]">
+            <div className="absolute bottom-4 left-4 z-[1000] flex flex-col gap-2">
+              <button 
+                onClick={() => {
+                  if (mapRef.current) {
+                    mapRef.current.flyTo({
+                      bearing: 0,
+                      animate: true,
+                      duration: 1000
+                    });
+                  }
+                }}
+                className={`w-10 h-10 rounded-full flex items-center justify-center bg-bg-nav ${bearing === 0 ? 'text-primary' : 'text-text-main'}`}
+                title="Resetuj orientację"
+              >
+                <div style={{ transform: `rotate(${-bearing}deg)` }}>
+                  <MdCompassCalibration size={24} />
+                </div>
+              </button>
               <button 
                 onClick={() => setResetCounter(prev => prev + 1)}
-                className="w-10 h-10 bg-bg-nav text-primary rounded-full shadow-lg flex items-center justify-center"
+                className="w-10 h-10 bg-bg-nav text-primary rounded-full flex items-center justify-center"
                 title="Resetuj widok"
               >
                 <MdMyLocation size={24} />

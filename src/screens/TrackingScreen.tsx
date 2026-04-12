@@ -94,7 +94,7 @@ export default function TrackingScreen() {
   };
 
   const mapCenter = currentPos || [52.0693, 19.4803];
-  const mapZoom = currentPos ? 16 : 6;
+  const mapZoom = currentPos ? 16 : 5.2;
 
   // Split path into segments based on isSegmentStart
   const segments: any[][] = [];
@@ -128,7 +128,7 @@ export default function TrackingScreen() {
         <div className="absolute top-0 left-0 right-0 w-full z-[1000] pointer-events-none">
           <button 
             onClick={handleBack}
-            className="absolute top-4 left-4 bg-bg-nav p-2 rounded-full shadow-lg text-text-main flex items-center justify-center transition-colors pointer-events-auto"
+            className="absolute top-4 left-4 bg-bg-nav p-2 rounded-full text-text-main flex items-center justify-center transition-colors pointer-events-auto"
           >
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
@@ -180,7 +180,7 @@ export default function TrackingScreen() {
                 });
               }
             }}
-            className="w-10 h-10 rounded-full shadow-lg flex items-center justify-center bg-bg-nav text-text-main"
+            className={`w-10 h-10 rounded-full flex items-center justify-center bg-bg-nav ${bearing === 0 ? 'text-primary' : 'text-text-main'}`}
             title="Resetuj orientację"
           >
             <div style={{ transform: `rotate(${-bearing}deg)` }}>
@@ -189,7 +189,7 @@ export default function TrackingScreen() {
           </button>
           <button 
             onClick={handleResetView}
-            className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center ${isLocked ? 'bg-bg-nav text-primary' : 'bg-bg-nav text-text-main'}`}
+            className={`w-10 h-10 rounded-full flex items-center justify-center ${isLocked ? 'bg-bg-nav text-primary' : 'bg-bg-nav text-text-main'}`}
             title="Resetuj widok"
           >
             <MdMyLocation size={24} />
