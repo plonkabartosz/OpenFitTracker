@@ -332,26 +332,6 @@
       "paint": {"background-color": "rgba(32, 33, 36, 1)"}
     },
     {
-      "id": "Wood",
-      "type": "fill",
-      "source": "openmaptiles",
-      "source-layer": "landcover",
-      "minzoom": 9,
-      "filter": ["all", ["==", "subclass", "wood"]],
-      "layout": {"visibility": "visible"},
-      "paint": {"fill-antialias": true, "fill-color": "rgba(32, 33, 36, 1)"}
-    },
-    {
-      "id": "Forest",
-      "type": "fill",
-      "source": "openmaptiles",
-      "source-layer": "landcover",
-      "minzoom": 9,
-      "filter": ["all", ["==", "subclass", "forest"]],
-      "layout": {"visibility": "visible"},
-      "paint": {"fill-antialias": true, "fill-color": "rgba(30, 31, 33, 1)"}
-    },
-    {
       "id": "River tunnel",
       "type": "line",
       "source": "openmaptiles",
@@ -3000,7 +2980,7 @@
         "symbol-sort-key": ["to-number", ["get", "rank"]],
         "text-anchor": "top",
         "text-field": {"stops": [[6, " "], [12, "{name} {ele}m"]]},
-        "text-font": ["Noto Sans Regular"],
+        "text-font": ["Open Sans Regular", "Noto Sans Regular"],
         "text-line-height": 1.1,
         "text-max-width": 6,
         "text-offset": [0, 0.5],
