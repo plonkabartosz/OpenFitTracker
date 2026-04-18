@@ -74,7 +74,7 @@ function Layout() {
 
   useEffect(() => {
     const handled = localStorage.getItem('locationPromptHandled');
-    if (!handled && !window.AndroidInterface) {
+    if (!handled) {
       setShowPermissionPopup(true);
     }
   }, []);
@@ -85,6 +85,9 @@ function Layout() {
 
   const requestPermissions = () => {
     setShowPermissionPopup(false);
+    if (window.AndroidInterface && window.AndroidInterface.requestPermissions) {
+      window.AndroidInterface.requestPermissions();
+    }
     enableLocationTracking();
   };
 

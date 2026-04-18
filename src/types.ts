@@ -34,10 +34,16 @@ declare global {
       getSessionsAsync: () => void;
       deleteSession: (id: number) => void;
       clearSessions: () => void;
+      requestPermissions: () => void;
+      exportData: () => void;
+      importData: () => void;
+      saveUsername: (username: string) => void;
+      getUsernameAsync: () => void;
     };
     onAndroidLocationUpdate: (lat: number, lng: number, alt: number, acc: number, speed: number, ts: number) => void;
     onAndroidStatsUpdate: (distance: number, duration: number) => void;
     onAndroidStateUpdate: (isRecording: boolean, isPaused: boolean) => void;
     onAndroidSessionsLoaded: (jsonStr: string) => void;
+    onAndroidUsernameLoaded: (username: string) => void;
   }
 }
