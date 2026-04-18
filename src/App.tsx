@@ -20,7 +20,7 @@ function PersistentTrackingNotification() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  if (!isRecording || location.pathname === '/tracking') return null;
+  if (!isRecording || location.pathname === '/tracking' || window.AndroidInterface) return null;
 
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -74,7 +74,7 @@ function Layout() {
 
   useEffect(() => {
     const handled = localStorage.getItem('locationPromptHandled');
-    if (!handled) {
+    if (!handled && !window.AndroidInterface) {
       setShowPermissionPopup(true);
     }
   }, []);

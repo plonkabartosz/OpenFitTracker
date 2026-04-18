@@ -1,71 +1,38 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
 import { t } from '../i18n';
 import React, { useState, useEffect } from 'react';
 import { useDeviceType } from '../hooks/useDeviceType';
 
 export default function ProfileScreen() {
-  const profile = useLiveQuery(() => db.profile.get(1));
   const { isMobile } = useDeviceType();
   const [username, setUsername] = useState('');
   const [showClearDataPopup, setShowClearDataPopup] = useState(false);
 
   useEffect(() => {
-    if (profile && profile.username) {
-      setUsername(profile.username);
+    const savedName = localStorage.getItem('openfit_username');
+    if (savedName) {
+      setUsername(savedName);
     }
-  }, [profile]);
+  }, []);
 
-  const handleSave = async (newUsername: string) => {
-    if (profile) {
-      await db.profile.update(1, { username: newUsername });
-    } else {
-      await db.profile.add({ id: 1, username: newUsername });
-    }
+  const handleSave = (newUsername: string) => {
+    localStorage.setItem('openfit_username', newUsername);
   };
 
   const exportData = async () => {
-    const sessions = await db.sessions.toArray();
-    const profileData = await db.profile.toArray();
-    const exportObj = { sessions, profile: profileData };
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "open_fit_tracker_backup.json");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    alert("Funkcja niedostępna z poziomu przeglądarki.");
   };
 
   const importData = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const content = e.target?.result as string;
-          const data = JSON.parse(content);
-          if (Array.isArray(data)) {
-            await db.sessions.bulkPut(data);
-          } else if (data && typeof data === 'object') {
-            if (data.sessions && Array.isArray(data.sessions)) {
-              await db.sessions.bulkPut(data.sessions);
-            }
-            if (data.profile && Array.isArray(data.profile)) {
-              await db.profile.bulkPut(data.profile);
-            }
-          }
-        } catch (err) {
-          console.error("Import error", err);
-        }
-      };
-      reader.readAsText(file);
-    }
+    alert("Funkcja niedostępna z poziomu przeglądarki.");
   };
 
   const handleClearData = async () => {
     setShowClearDataPopup(false);
-    await db.sessions.clear();
+    if (window.AndroidInterface) {
+      window.AndroidInterface.clearSessions();
+      return;
+    }
+    alert("Aplikacja działa jedynie jako interfejs dla systemu Android. Brak danych do wyczyszczenia.");
   };
 
   return (

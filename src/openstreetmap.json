@@ -332,6 +332,26 @@
       "paint": {"background-color": "rgba(32, 33, 36, 1)"}
     },
     {
+      "id": "Wood",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landcover",
+      "minzoom": 9,
+      "filter": ["all", ["==", "subclass", "wood"]],
+      "layout": {"visibility": "visible"},
+      "paint": {"fill-antialias": true, "fill-color": "rgba(32, 33, 36, 1)"}
+    },
+    {
+      "id": "Forest",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landcover",
+      "minzoom": 9,
+      "filter": ["all", ["==", "subclass", "forest"]],
+      "layout": {"visibility": "visible"},
+      "paint": {"fill-antialias": true, "fill-color": "rgba(30, 31, 33, 1)"}
+    },
+    {
       "id": "River tunnel",
       "type": "line",
       "source": "openmaptiles",

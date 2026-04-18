@@ -1,18 +1,31 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
 import { t } from '../i18n';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDeviceType } from '../hooks/useDeviceType';
 
 export default function HomeScreen() {
   const { isMobile } = useDeviceType();
   const [range, setRange] = useState<'today' | 'month' | 'year' | 'all'>('month');
 
-  const sessions = useLiveQuery(
-    () => db.sessions.where('isFinished').equals(1).toArray()
-  );
+  const [androidSessions, setAndroidSessions] = useState<any[] | null>(null);
 
-  if (!sessions) return <div className="p-4">Loading...</div>;
+  useEffect(() => {
+    if (window.AndroidInterface) {
+      window.onAndroidSessionsLoaded = (jsonStr: string) => {
+        try {
+          const arr = JSON.parse(jsonStr);
+          setAndroidSessions(arr);
+        } catch(e) {
+          console.error(e);
+        }
+      };
+      window.AndroidInterface.getSessionsAsync();
+    }
+  }, []);
+
+  const isAndroid = !!window.AndroidInterface;
+  const sessions = isAndroid ? androidSessions : [];
+
+  if (!sessions && isAndroid) return <div className="p-4">Loading...</div>;
 
   const now = new Date();
   const filteredSessions = sessions.filter(s => {
@@ -43,8 +56,8 @@ export default function HomeScreen() {
   let favoriteActivity = '--';
   let maxCount = 0;
   for (const [type, count] of Object.entries(activityCounts)) {
-    if (count > maxCount) {
-      maxCount = count;
+    if ((count as number) > maxCount) {
+      maxCount = count as number;
       favoriteActivity = type;
     }
   }

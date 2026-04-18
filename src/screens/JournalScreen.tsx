@@ -1,5 +1,3 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
 import { t } from '../i18n';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -9,15 +7,31 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { formatDuration, formatDistance } from '../utils/format';
 import { useDeviceType } from '../hooks/useDeviceType';
 import customMapStyle from '../openstreetmap.json';
+import { useState, useEffect } from 'react';
 
 export default function JournalScreen() {
   const navigate = useNavigate();
   const { isMobile } = useDeviceType();
-  const sessions = useLiveQuery(
-    () => db.sessions.where('isFinished').equals(1).reverse().sortBy('startTime')
-  );
+  const [androidSessions, setAndroidSessions] = useState<any[] | null>(null);
 
-  if (!sessions) return <div className="p-4">Loading...</div>;
+  useEffect(() => {
+    if (window.AndroidInterface) {
+      window.onAndroidSessionsLoaded = (jsonStr: string) => {
+        try {
+          const arr = JSON.parse(jsonStr);
+          setAndroidSessions(arr);
+        } catch(e) {
+          console.error(e);
+        }
+      };
+      window.AndroidInterface.getSessionsAsync();
+    }
+  }, []);
+
+  const isAndroid = !!window.AndroidInterface;
+  const sessions = isAndroid ? androidSessions : [];
+
+  if (!sessions && isAndroid) return <div className="p-4">Loading...</div>;
 
   return (
     <div className={`p-6 ${!isMobile ? 'max-w-[100dvh]' : ''} mx-auto w-full`}>
@@ -70,9 +84,10 @@ export default function JournalScreen() {
                   >
                     <Source id={`route-${session.id}`} type="geojson" data={{
                       type: 'Feature',
+                      properties: {},
                       geometry: {
                         type: 'LineString',
-                        coordinates: session.path.map(p => [p.lng, p.lat])
+                        coordinates: session.path.map((p: any) => [p.lng, p.lat])
                       }
                     }}>
                       <Layer

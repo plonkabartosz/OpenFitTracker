@@ -1,6 +1,4 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
 import { t } from '../i18n';
 import { calculateDistance } from '../utils/geo';
 import Map, { Source, Layer, Marker, useMap, MapRef } from 'react-map-gl/maplibre';
@@ -46,15 +44,33 @@ export default function ActivityDetailsScreen() {
   const mapRef = useRef<MapRef>(null);
   const [bearing, setBearing] = useState(0);
   
-  const session = useLiveQuery(() => db.sessions.get(Number(id)), [id]);
+  const [androidSession, setAndroidSession] = useState<any>(null);
+
+  useEffect(() => {
+    if (window.AndroidInterface) {
+      window.onAndroidSessionsLoaded = (jsonStr: string) => {
+        try {
+          const arr = JSON.parse(jsonStr);
+          const found = arr.find((s: any) => String(s.id) === id);
+          if (found) {
+            setAndroidSession(found);
+          }
+        } catch(e) { console.error(e) }
+      };
+      window.AndroidInterface.getSessionsAsync();
+    }
+  }, [id]);
+
+  const isAndroid = !!window.AndroidInterface;
+  const session = isAndroid ? androidSession : null;
 
   const path = session?.path || [];
   const hasPath = path.length > 0;
-  
+
   const bounds = React.useMemo(() => {
     if (!hasPath) return null;
-    const lngs = path.map(p => p.lng);
-    const lats = path.map(p => p.lat);
+    const lngs = path.map((p: any) => p.lng);
+    const lats = path.map((p: any) => p.lat);
     return [
       [Math.min(...lngs), Math.min(...lats)],
       [Math.max(...lngs), Math.max(...lats)]
@@ -65,7 +81,7 @@ export default function ActivityDetailsScreen() {
   const segments: any[][] = [];
   let currentSegment: any[] = [];
   
-  path.forEach(p => {
+  path.forEach((p: any) => {
     if (p.isSegmentStart && currentSegment.length > 0) {
       segments.push(currentSegment);
       currentSegment = [];
@@ -78,19 +94,24 @@ export default function ActivityDetailsScreen() {
 
   const geojson: any = {
     type: 'FeatureCollection',
-    features: segments.map(segment => ({
+    features: segments.map((segment: any) => ({
       type: 'Feature',
+      properties: {},
       geometry: {
         type: 'LineString',
-        coordinates: segment.map(p => [p.lng, p.lat])
+        coordinates: segment.map((p: any) => [p.lng, p.lat])
       }
     }))
   };
 
-  if (!session) return <div className="p-4">Loading...</div>;
+  if (!session) return <div className="p-4">Brak aktywności do wyświetlenia...</div>;
 
   const handleDelete = async () => {
-    await db.sessions.delete(Number(id));
+    if (window.AndroidInterface) {
+      window.AndroidInterface.deleteSession(Number(id));
+      navigate('/journal');
+      return;
+    }
     navigate('/journal');
   };
 
