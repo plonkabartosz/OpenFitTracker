@@ -67,17 +67,21 @@ function Layout() {
   const location = useLocation();
   const { isRecording, enableLocationTracking } = useTracking();
   const { isMobile } = useDeviceType();
-  const [showPermissionPopup, setShowPermissionPopup] = useState(false);
+  const [showPermissionPopup, setShowPermissionPopup] = useState(() => {
+    // If we're inside the Android wrapper, we might not need the demo popup, 
+    // but we can show it once on load to trigger the real Android permission request.
+    return !window.Android;
+  });
   
   // Hide bottom nav on tracking screen
   const isTrackingScreen = location.pathname === '/tracking';
 
+  // Automatically request parameters on mount if we're in the Android app to ensure things work smoothly
   useEffect(() => {
-    const handled = localStorage.getItem('locationPromptHandled');
-    if (!handled) {
-      setShowPermissionPopup(true);
+    if (window.Android) {
+      enableLocationTracking();
     }
-  }, []);
+  }, [enableLocationTracking]);
 
   const handleStartTrackingClick = () => {
     navigate('/tracking');
@@ -90,7 +94,6 @@ function Layout() {
 
   const cancelPermissions = () => {
     setShowPermissionPopup(false);
-    localStorage.setItem('locationPromptHandled', 'dismissed');
   };
 
   return (
