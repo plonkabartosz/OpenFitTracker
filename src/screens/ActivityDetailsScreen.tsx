@@ -1,17 +1,19 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db';
 import { t } from '../i18n';
+import { calculateDistance } from '../utils/geo';
 import Map, { Source, Layer, Marker, useMap, MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import React, { useState, useEffect, useRef } from 'react';
 import { formatDuration, formatDistance } from '../utils/format';
 import { useDeviceType } from '../hooks/useDeviceType';
 import customMapStyle from '../openstreetmap.json';
 import { MdMyLocation, MdCompassCalibration } from 'react-icons/md';
 import { CustomAttribution } from '../components/CustomAttribution';
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { ActivitySession } from '../contexts/TrackingContext';
 
 function MapController({ bounds, resetCounter }: { bounds: any, resetCounter: number }) {
   const { current: map } = useMap();
@@ -43,41 +45,10 @@ export default function ActivityDetailsScreen() {
   const [showDeletePopup, setShowDeletePopup] = useState(false);
   const mapRef = useRef<MapRef>(null);
   const [bearing, setBearing] = useState(0);
-  const [session, setSession] = useState<ActivitySession | null>(null);
+  
+  const session = useLiveQuery(() => db.sessions.get(Number(id)), [id]);
 
-  useEffect(() => {
-    if (id && window.Android && window.Android.getActivityDetails) {
-      try {
-        const dataStr = window.Android.getActivityDetails(Number(id));
-        if (dataStr) {
-          setSession(JSON.parse(dataStr));
-        }
-      } catch (e) {
-        console.error("Failed to parse activity details", e);
-      }
-    } else {
-      // Mock for development
-      setSession({
-        id: Number(id),
-        type: 'Bieganie',
-        startTime: Date.now() - 3600000, // 1 hour ago
-        endTime: Date.now(),
-        distanceMeters: 5500,
-        durationMs: 1800000, // 30 mins
-        isFinished: 1,
-        path: [
-          { lat: 52.2297, lng: 21.0122, speed: 3.5, altitude: 100, timestamp: Date.now() - 1800000, isSegmentStart: true, accuracy: 0 },
-          { lat: 52.2300, lng: 21.0150, speed: 3.6, altitude: 102, timestamp: Date.now() - 900000, isSegmentStart: false, accuracy: 0 }
-        ]
-      });
-    }
-  }, [id]);
-
-  if (!session) {
-    return <div className="p-6 text-center">Ładowanie...</div>;
-  }
-
-  const path = session.path || [];
+  const path = session?.path || [];
   const hasPath = path.length > 0;
   
   const bounds = React.useMemo(() => {
@@ -116,15 +87,32 @@ export default function ActivityDetailsScreen() {
     }))
   };
 
-  const handleDelete = () => {
-    setShowDeletePopup(false);
+  if (!session) return <div className="p-4">Loading...</div>;
+
+  const handleDelete = async () => {
+    await db.sessions.delete(Number(id));
+    navigate('/journal');
   };
 
-  const chartData = path.map(p => ({
-    time: format(new Date(p.timestamp), 'HH:mm:ss'),
-    speed: Math.round((p.speed || 0) * 3.6 * 10) / 10,
-    altitude: p.altitude ? Math.round(p.altitude) : null
-  }));
+  // Calculate chart data
+  const chartData = path.map((p, index) => {
+    let speed = 0;
+    if (p.speed !== null) {
+      speed = p.speed * 3.6;
+    } else if (index > 0) {
+      const prev = path[index - 1];
+      const dist = calculateDistance(prev.lat, prev.lng, p.lat, p.lng);
+      const timeDiff = (p.timestamp - prev.timestamp) / 1000;
+      if (timeDiff > 0) {
+        speed = (dist / timeDiff) * 3.6;
+      }
+    }
+    return {
+      time: format(new Date(p.timestamp), 'HH:mm:ss'),
+      speed: Math.round(speed * 10) / 10,
+      altitude: p.altitude ? Math.round(p.altitude) : null
+    };
+  }).filter((_, i) => i % Math.ceil(path.length / 50) === 0); // Downsample for chart
 
   const avgSpeed = session.durationMs > 0 ? (session.distanceMeters / (session.durationMs / 1000)) * 3.6 : 0;
 
