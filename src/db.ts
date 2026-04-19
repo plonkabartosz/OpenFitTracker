@@ -1,3 +1,5 @@
+import Dexie, { Table } from 'dexie';
+
 export interface LocationPoint {
   lat: number;
   lng: number;
@@ -24,24 +26,17 @@ export interface UserProfile {
   username: string;
 }
 
-// Dummy db export to avoid breaking file structures. We no longer use dexie.
-export const db = {
-  sessions: {
-    add: async () => {},
-    put: async () => {},
-    clear: async () => {},
-    where: () => ({
-      reverse: () => ({
-        sortBy: async () => [],
-      }),
-      delete: async () => {}
-    }),
-    toArray: async () => []
-  },
-  profile: {
-    toArray: async () => [],
-    add: async () => {},
-    put: async () => {}
-  }
-};
+export class OpenFitDatabase extends Dexie {
+  sessions!: Table<ActivitySession, number>;
+  profile!: Table<UserProfile, number>;
 
+  constructor() {
+    super('OpenFitDatabase');
+    this.version(1).stores({
+      sessions: '++id, type, startTime, endTime, isFinished',
+      profile: '++id'
+    });
+  }
+}
+
+export const db = new OpenFitDatabase();

@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { LocationPoint } from '../db';
+import React, { createContext, useContext, useState, useRef, useEffect, ReactNode } from 'react';
+import { db, LocationPoint } from '../db';
+import { calculateDistance } from '../utils/geo';
 import { t } from '../i18n';
 
 interface TrackingContextType {
@@ -23,92 +24,237 @@ interface TrackingContextType {
 
 const TrackingContext = createContext<TrackingContextType | null>(null);
 
+async function fetchElevation(lat: number, lng: number): Promise<number | null> {
+  try {
+    const response = await fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lng}`);
+    const data = await response.json();
+    if (data && data.results && data.results[0]) {
+      return data.results[0].elevation;
+    }
+  } catch (err) {
+    console.error("Elevation fetch error", err);
+  }
+  return null;
+}
+
 export function TrackingProvider({ children }: { children: ReactNode }) {
-  const [isLocationEnabled, setIsLocationEnabled] = useState(true); // Default true since Android handles permissions
+  const [isLocationEnabled, setIsLocationEnabled] = useState(() => {
+    return localStorage.getItem('locationPromptHandled') === 'true';
+  });
   const [activityType, setActivityType] = useState(t.activity_types[0]);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const isPausedRef = useRef(false);
   const [path, setPath] = useState<LocationPoint[]>([]);
-  const [currentPos, setCurrentPos] = useState<[number, number] | null>([52.0693, 19.4803]);
-  const [distance, setDistance] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [currentSpeed, setCurrentSpeed] = useState(0);
+  const pathRef = useRef<LocationPoint[]>([]);
+  const [currentPos, setCurrentPos] = useState<[number, number] | null>(null);
+  const [distance, setDistance] = useState(0); // in meters
+  const [duration, setDuration] = useState(0); // in seconds
+  const [currentSpeed, setCurrentSpeed] = useState(0); // km/h
   const [currentAltitude, setCurrentAltitude] = useState<number | null>(null);
-
-  useEffect(() => {
-    window.updateTrackingData = (dataStr: string) => {
-      try {
-        const data = JSON.parse(dataStr);
-        if (data.newPoint) {
-            setPath(prev => [...prev, data.newPoint]);
-        }
-        if (data.currentPos) setCurrentPos(data.currentPos);
-        if (data.distance !== undefined) setDistance(data.distance);
-        if (data.duration !== undefined) setDuration(data.duration);
-        if (data.currentSpeed !== undefined) setCurrentSpeed(data.currentSpeed);
-        if (data.currentAltitude !== undefined) setCurrentAltitude(data.currentAltitude);
-      } catch (e) {
-        console.error("Failed to parse tracking data", e);
-      }
-    };
-
-    window.onActivityStateChanged = (stateStr: string) => {
-        try {
-            const state = JSON.parse(stateStr);
-            if (state.isRecording !== undefined) setIsRecording(state.isRecording);
-            if (state.isPaused !== undefined) setIsPaused(state.isPaused);
-            if (state.activityType !== undefined) setActivityType(state.activityType);
-        } catch(e) {
-            console.error("Failed to parse state", e);
-        }
-    }
-
-    // Request initial state from Android if available
-    setTimeout(() => {
-        if (window.Android && window.Android.requestState) {
-            window.Android.requestState();
-        }
-    }, 500);
-
-    return () => {
-      delete (window as any).updateTrackingData;
-      delete (window as any).onActivityStateChanged;
-    };
-  }, []);
+  
+  const watchIdRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastPosRef = useRef<LocationPoint | null>(null);
+  const lastUIPosRef = useRef<LocationPoint | null>(null);
+  const lastElevationPosRef = useRef<{lat: number, lng: number} | null>(null);
+  const lastFetchedAltitudeRef = useRef<number | null>(null);
+  const shouldStartNewSegmentRef = useRef<boolean>(false);
 
   const enableLocationTracking = () => {
+    localStorage.setItem('locationPromptHandled', 'true');
     setIsLocationEnabled(true);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(() => {}, () => {});
+    }
   };
+
+  const updateElevation = async (lat: number, lng: number) => {
+    if (lastElevationPosRef.current) {
+      const dist = calculateDistance(lastElevationPosRef.current.lat, lastElevationPosRef.current.lng, lat, lng);
+      if (dist < 5) return lastFetchedAltitudeRef.current; // Only fetch if moved > 5m
+    }
+    const alt = await fetchElevation(lat, lng);
+    if (alt !== null) {
+      setCurrentAltitude(alt);
+      lastElevationPosRef.current = { lat, lng };
+      lastFetchedAltitudeRef.current = alt;
+      return alt;
+    }
+    return lastFetchedAltitudeRef.current;
+  };
+
+  useEffect(() => {
+    if (!navigator.geolocation || !isLocationEnabled) return;
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const newLat = pos.coords.latitude;
+        const newLng = pos.coords.longitude;
+        const newAlt = pos.coords.altitude;
+        const newAcc = pos.coords.accuracy;
+        const newSpeed = pos.coords.speed;
+        const newTs = pos.timestamp;
+
+        const handleLocationUpdate = async () => {
+          const alt = await updateElevation(newLat, newLng);
+          const finalAlt = alt !== null ? alt : newAlt;
+          
+          // Keep updating UI even if paused
+          setCurrentAltitude(finalAlt);
+          setCurrentPos([newLat, newLng]);
+          
+          // Calculate speed for UI
+          if (newSpeed !== null) {
+            setCurrentSpeed(newSpeed * 3.6);
+          } else if (lastUIPosRef.current) {
+            const dist = calculateDistance(
+              lastUIPosRef.current.lat, lastUIPosRef.current.lng,
+              newLat, newLng
+            );
+            const timeDiff = (newTs - lastUIPosRef.current.timestamp) / 1000;
+            if (timeDiff > 0) {
+              setCurrentSpeed((dist / timeDiff) * 3.6);
+            }
+          }
+
+          // Update lastUIPosRef for next UI update
+          lastUIPosRef.current = {
+            lat: newLat,
+            lng: newLng,
+            timestamp: newTs,
+            speed: newSpeed,
+            accuracy: newAcc,
+            altitude: finalAlt
+          };
+
+          // If not recording, we are done
+          if (!isRecording) return;
+
+          // If paused, we don't save data or update distance
+          if (isPausedRef.current) return;
+
+          if (newAcc > 20) return;
+
+          const isSegmentStart = shouldStartNewSegmentRef.current;
+          if (isSegmentStart) {
+            shouldStartNewSegmentRef.current = false;
+          }
+
+          const newPoint: LocationPoint = {
+            lat: newLat,
+            lng: newLng,
+            timestamp: newTs,
+            speed: newSpeed,
+            accuracy: newAcc,
+            altitude: finalAlt,
+            isSegmentStart: isSegmentStart
+          };
+
+          setPath(prev => {
+            // Only calculate distance if NOT a segment start and we have a previous point
+            if (lastPosRef.current && !isSegmentStart) {
+              const dist = calculateDistance(
+                lastPosRef.current.lat, lastPosRef.current.lng,
+                newLat, newLng
+              );
+              
+              if (dist > 1) {
+                setDistance(d => d + dist);
+                // Speed is already updated above for UI
+                lastPosRef.current = newPoint;
+                const newPath = [...prev, newPoint];
+                pathRef.current = newPath;
+                return newPath;
+              }
+              return prev;
+            } else {
+              // First point of session or first point of new segment
+              lastPosRef.current = newPoint;
+              const newPath = [...prev, newPoint];
+              pathRef.current = newPath;
+              return newPath;
+            }
+          });
+        };
+
+        handleLocationUpdate();
+      },
+      (err) => console.error("Location error", err),
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [isRecording]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
 
   const startTracking = async () => {
     setIsRecording(true);
     setIsPaused(false);
-    if (window.Android) {
-        window.Android.startTracking(activityType);
-    }
+    isPausedRef.current = false;
+    shouldStartNewSegmentRef.current = false;
+    startTimeRef.current = Date.now();
+    setPath([]);
+    pathRef.current = [];
+    setDistance(0);
+    setDuration(0);
+    lastPosRef.current = null;
+    lastUIPosRef.current = null;
+
+    timerRef.current = setInterval(() => {
+      setDuration(prev => prev + 1);
+    }, 1000);
   };
 
   const pauseTracking = () => {
     setIsPaused(true);
-    if (window.Android) {
-        window.Android.pauseTracking();
+    isPausedRef.current = true;
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
+    setCurrentSpeed(0);
   };
 
   const resumeTracking = () => {
     setIsPaused(false);
-    if (window.Android) {
-        window.Android.resumeTracking();
-    }
+    isPausedRef.current = false;
+    shouldStartNewSegmentRef.current = true;
+    
+    timerRef.current = setInterval(() => {
+      setDuration(prev => prev + 1);
+    }, 1000);
   };
 
   const stopTracking = async () => {
-    setIsRecording(false);
-    setIsPaused(false);
-    setActivityType(t.activity_types[0]);
-    if (window.Android) {
-        window.Android.stopTracking();
+    pauseTracking();
+    
+    if (duration > 0 || pathRef.current.length > 0) {
+      await db.sessions.add({
+        type: activityType,
+        startTime: startTimeRef.current || Date.now(),
+        endTime: Date.now(),
+        durationMs: duration * 1000,
+        distanceMeters: distance,
+        path: pathRef.current,
+        isFinished: 1
+      });
     }
+    
+    setIsRecording(false);
+    setPath([]);
+    pathRef.current = [];
+    setDistance(0);
+    setDuration(0);
+    setCurrentSpeed(0);
+    shouldStartNewSegmentRef.current = false;
+    setActivityType(t.activity_types[0]);
   };
 
   return (
@@ -130,4 +276,3 @@ export function useTracking() {
   }
   return context;
 }
-

@@ -1,42 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db';
 import { t } from '../i18n';
-import { useDeviceType } from '../hooks/useDeviceType';
 import { useNavigate } from 'react-router-dom';
-import { ActivitySession } from '../db';
-import { formatDistance, formatDuration } from '../utils/format';
+import { format } from 'date-fns';
+import { pl } from 'date-fns/locale';
+import Map, { Source, Layer } from 'react-map-gl/maplibre';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { formatDuration, formatDistance } from '../utils/format';
+import { useDeviceType } from '../hooks/useDeviceType';
+import customMapStyle from '../openstreetmap.json';
 
 export default function JournalScreen() {
-  const { isMobile } = useDeviceType();
   const navigate = useNavigate();
-  const [sessions, setSessions] = useState<ActivitySession[]>([]);
+  const { isMobile } = useDeviceType();
+  const sessions = useLiveQuery(
+    () => db.sessions.where('isFinished').equals(1).reverse().sortBy('startTime')
+  );
 
-  useEffect(() => {
-    window.onSessionsLoaded = (sessionsStr: string) => {
-        try {
-            const data: ActivitySession[] = JSON.parse(sessionsStr);
-            setSessions(data);
-        } catch(e) {
-            console.error("Failed to parse sessions", e);
-        }
-    };
-
-    if (window.Android && window.Android.requestSessions) {
-        window.Android.requestSessions();
-    }
-
-    return () => {
-        delete (window as any).onSessionsLoaded;
-    };
-  }, []);
-
-  const handleDelete = (id?: number) => {
-      if (!id) return;
-      if (window.Android && window.Android.deleteSession) {
-          window.Android.deleteSession(id);
-          // Optimistically remove
-          setSessions(prev => prev.filter(s => s.id !== id));
-      }
-  };
+  if (!sessions) return <div className="p-4">Loading...</div>;
 
   return (
     <div className={`p-6 ${!isMobile ? 'max-w-[100dvh]' : ''} mx-auto w-full`}>
@@ -49,35 +30,64 @@ export default function JournalScreen() {
       ) : (
         <div className="space-y-4">
           {sessions.map(session => (
-            <div key={session.id} className="bg-bg-nav rounded-2xl p-4 shadow-sm" onClick={() => navigate(`/activity/${session.id}`)}>
-              <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 bg-primary/20 text-primary rounded-full flex items-center justify-center text-xl">
-                    {session.type === t.activity_types[0] ? '🏃' : session.type === t.activity_types[1] ? '🚶' : '🚴'}
+            <div 
+              key={session.id} 
+              onClick={() => navigate(`/activity/${session.id}`)}
+              className="bg-bg-nav rounded-2xl p-4 flex cursor-pointer transition-colors"
+            >
+              <div className="flex-1">
+                <div className="text-sm text-inactive mb-1">
+                  {format(session.startTime, 'd MMMM yyyy, HH:mm', { locale: pl })}
+                </div>
+                <div className="text-lg font-bold text-text-main mb-2">
+                  {session.type.charAt(0).toUpperCase() + session.type.slice(1).toLowerCase()}
+                </div>
+                <div className="flex gap-4 text-sm">
+                  <div>
+                    <span className="text-inactive">{t.distance}: </span>
+                    <span className="font-medium">{formatDistance(session.distanceMeters)}</span>
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg">{session.type}</h3>
-                    <p className="text-sm text-inactive">{new Date(session.startTime).toLocaleString([], { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                    <span className="text-inactive">{t.time}: </span>
+                    <span className="font-medium">
+                      {formatDuration(session.durationMs)}
+                    </span>
                   </div>
                 </div>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); handleDelete(session.id); }}
-                  className="w-10 h-10 bg-black/20 text-inactive hover:bg-danger/20 hover:text-danger rounded-full flex items-center justify-center transition-colors"
-                >
-                  <span className="material-symbols-outlined text-lg">delete</span>
-                </button>
               </div>
-              
-              <div className="flex justify-between mt-4 p-3 bg-black/20 rounded-xl">
-                <div className="text-center flex-1">
-                  <p className="text-xs text-inactive uppercase tracking-wider mb-1">{t.distance}</p>
-                  <p className="font-mono font-medium">{formatDistance(session.distanceMeters)}</p>
-                </div>
-                <div className="w-px bg-gray-800"></div>
-                <div className="text-center flex-1">
-                  <p className="text-xs text-inactive uppercase tracking-wider mb-1">{t.time}</p>
-                  <p className="font-mono font-medium">{formatDuration(session.durationMs)}</p>
-                </div>
+              <div className="w-16 h-16 bg-bg-main rounded-full flex items-center justify-center overflow-hidden relative pointer-events-none z-0">
+                {session.path && session.path.length > 0 ? (
+                  <Map
+                    initialViewState={{
+                      longitude: session.path[0].lng,
+                      latitude: session.path[0].lat,
+                      zoom: 13
+                    }}
+                    style={{ width: '100%', height: '100%' }}
+                    mapStyle={customMapStyle as any}
+                    interactive={false}
+                    attributionControl={false}
+                  >
+                    <Source id={`route-${session.id}`} type="geojson" data={{
+                      type: 'Feature',
+                      geometry: {
+                        type: 'LineString',
+                        coordinates: session.path.map(p => [p.lng, p.lat])
+                      }
+                    }}>
+                      <Layer
+                        id={`route-layer-${session.id}`}
+                        type="line"
+                        paint={{
+                          'line-color': '#8ab4f8',
+                          'line-width': 3
+                        }}
+                      />
+                    </Source>
+                  </Map>
+                ) : (
+                  <span className="material-symbols-outlined text-inactive">map</span>
+                )}
               </div>
             </div>
           ))}

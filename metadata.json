@@ -1,5 +1,7 @@
 {
-  "name": "Open Fit Tracker Android",
+  "name": "Open Fit Tracker",
   "description": "A simple, open-source fitness tracker for walking, running, and cycling.",
-  "majorCapabilities": []
+  "requestFramePermissions": [
+    "geolocation"
+  ]
 }
