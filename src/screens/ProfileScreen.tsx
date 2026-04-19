@@ -1,70 +1,22 @@
 import { t } from '../i18n';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useDeviceType } from '../hooks/useDeviceType';
 
 export default function ProfileScreen() {
   const { isMobile } = useDeviceType();
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState('User');
   const [showClearDataPopup, setShowClearDataPopup] = useState(false);
 
-  useEffect(() => {
-    if (window.AndroidInterface && window.AndroidInterface.getUsernameAsync) {
-      window.onAndroidUsernameLoaded = (name) => {
-        setUsername(name);
-      };
-      window.AndroidInterface.getUsernameAsync();
-    } else {
-      const savedName = localStorage.getItem('openfit_username');
-      if (savedName) {
-        setUsername(savedName);
-      }
-    }
-    
-    return () => {
-      // Cleanup
-      window.onAndroidUsernameLoaded = () => {};
-    };
-  }, []);
-
   const handleSave = (newUsername: string) => {
-    if (window.AndroidInterface && window.AndroidInterface.saveUsername) {
-      window.AndroidInterface.saveUsername(newUsername);
-    } else {
-      localStorage.setItem('openfit_username', newUsername);
-    }
+    // Intentionally empty
   };
 
-  const exportData = async () => {
-    if (window.AndroidInterface && window.AndroidInterface.exportData) {
-      window.AndroidInterface.exportData();
-    } else {
-      alert("Funkcja niedostępna z poziomu przeglądarki.");
-    }
+  const exportData = () => {
+    // Intentionally empty
   };
 
-  const importData = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // If not android, do standard alert.
-    // If we're on Android, we don't actually use the input element, we trigger Android's own Intent.
-    // But since the user clicked the label, the input triggers. We can just prevent default and call Android.
-  };
-
-  const handleImportClick = (e: React.MouseEvent) => {
-    if (window.AndroidInterface && window.AndroidInterface.importData) {
-      e.preventDefault(); // Prevent file input open
-      window.AndroidInterface.importData();
-    } else {
-      alert("Funkcja niedostępna z poziomu przeglądarki.");
-      e.preventDefault();
-    }
-  };
-
-  const handleClearData = async () => {
+  const handleClearData = () => {
     setShowClearDataPopup(false);
-    if (window.AndroidInterface) {
-      window.AndroidInterface.clearSessions();
-      return;
-    }
-    alert("Aplikacja działa jedynie jako interfejs dla systemu Android. Brak danych do wyczyszczenia.");
   };
 
   return (
@@ -87,7 +39,7 @@ export default function ProfileScreen() {
                 Anuluj
               </button>
               <button 
-                onClick={handleClearData}
+                onClick={() => setShowClearDataPopup(false)}
                 className="flex-1 py-3 rounded-xl font-semibold bg-danger text-white"
               >
                 Usuń
@@ -123,13 +75,12 @@ export default function ProfileScreen() {
           {t.export_data}
         </button>
         
-        <label 
-          onClick={handleImportClick}
-          className="w-full bg-primary text-bg-main font-bold py-3 rounded-xl hover:bg-opacity-90 transition-colors text-center cursor-pointer"
+        <button 
+          onClick={() => {}}
+          className="w-full bg-primary text-bg-main font-bold py-3 rounded-xl hover:bg-opacity-90 transition-colors text-center"
         >
           {t.import_data}
-          <input type="file" accept=".json" className="hidden" onChange={importData} />
-        </label>
+        </button>
 
         <button 
           onClick={() => setShowClearDataPopup(true)}

@@ -23,38 +23,20 @@ export default function TrackingScreen() {
   const [customActivityError, setCustomActivityError] = useState(false);
 
   const mapRef = useRef<MapRef>(null);
-  const [isLocked, setIsLocked] = useState(true);
+  const [isLocked, setIsLocked] = useState(false);
   const [hasInitialGpsLock, setHasInitialGpsLock] = useState(false);
   const [bearing, setBearing] = useState(0);
 
   useEffect(() => {
-    if (currentPos && mapRef.current) {
-      if (!hasInitialGpsLock) {
-        // First time we get GPS, fly to it with zoom 16
-        mapRef.current.flyTo({
-          center: [currentPos[1], currentPos[0]],
-          zoom: 16,
-          animate: true,
-          duration: 1000
-        });
-        setHasInitialGpsLock(true);
-        setIsLocked(true);
-      } else if (isLocked) {
-        // Subsequent updates, keep current zoom
-        mapRef.current.flyTo({
-          center: [currentPos[1], currentPos[0]],
-          animate: true,
-          duration: 1000
-        });
-      }
-    }
+    // Disabled map updates for missing properties
   }, [currentPos, isLocked, hasInitialGpsLock]);
 
   const handleResetView = () => {
     setIsLocked(true);
-    if (currentPos && mapRef.current) {
+    if (mapRef.current) {
       mapRef.current.flyTo({
-        center: [currentPos[1], currentPos[0]],
+        center: currentPos ? [currentPos[1], currentPos[0]] : [19.4803, 52.0693],
+        zoom: mapZoom,
         animate: true,
         duration: 1000
       });
@@ -93,8 +75,7 @@ export default function TrackingScreen() {
     }, 1000);
   };
 
-  const mapCenter = currentPos || [52.0693, 19.4803];
-  const mapZoom = currentPos ? 16 : 5.2;
+  const mapZoom = 15;
 
   // Split path into segments based on isSegmentStart
   const segments: any[][] = [];
@@ -122,6 +103,15 @@ export default function TrackingScreen() {
     }))
   };
 
+  useEffect(() => {
+    if (isLocked && currentPos && mapRef.current) {
+        mapRef.current.flyTo({
+            center: [currentPos[1], currentPos[0]],
+            duration: 500,
+        });
+    }
+  }, [currentPos, isLocked]);
+
   return (
     <div className="flex flex-col h-full bg-bg-nav">
       <div className="flex-1 relative z-0 w-[100vw] left-1/2 -translate-x-1/2">
@@ -136,8 +126,8 @@ export default function TrackingScreen() {
         <Map
           ref={mapRef}
           initialViewState={{
-            longitude: mapCenter[1],
-            latitude: mapCenter[0],
+            longitude: currentPos ? currentPos[1] : 19.4803,
+            latitude: currentPos ? currentPos[0] : 52.0693,
             zoom: mapZoom
           }}
           style={{ width: '100%', height: '100%' }}
@@ -163,11 +153,6 @@ export default function TrackingScreen() {
               }}
             />
           </Source>
-          {currentPos && (
-            <Marker longitude={currentPos[1]} latitude={currentPos[0]}>
-              <div style={{ backgroundColor: '#4285f4', width: '16px', height: '16px', borderRadius: '50%', border: '3px solid white', boxShadow: '0 0 10px rgba(66, 133, 244, 0.8)' }}></div>
-            </Marker>
-          )}
         </Map>
         <div className="absolute bottom-4 left-4 z-[1000] pointer-events-auto flex flex-col gap-2">
           <button 

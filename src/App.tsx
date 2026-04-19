@@ -14,120 +14,21 @@ import ActivityDetailsScreen from './screens/ActivityDetailsScreen';
 import { TrackingProvider, useTracking } from './contexts/TrackingContext';
 import { useDeviceType } from './hooks/useDeviceType';
 
-function PersistentTrackingNotification() {
-  const { isRecording, isPaused, activityType, distance, duration, pauseTracking, resumeTracking, stopTracking } = useTracking();
-  const { isMobile } = useDeviceType();
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  if (!isRecording || location.pathname === '/tracking' || window.AndroidInterface) return null;
-
-  const formatTime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
-  return (
-      <div 
-        className="fixed top-0 left-0 right-0 w-full bg-primary text-bg-main z-[9999] shadow-lg cursor-pointer"
-        onClick={() => navigate('/tracking')}
-      >
-        <div className={`${!isMobile ? 'max-w-[100dvh]' : ''} mx-auto p-4 flex items-center justify-between w-full`}>
-          <div className="flex flex-col">
-            <span className="font-bold text-sm uppercase">{activityType}</span>
-            <div className="flex gap-4 text-xs font-mono">
-              <span>{(distance / 1000).toFixed(2)} km</span>
-              <span>{formatTime(duration)}</span>
-            </div>
-          </div>
-          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-            {isPaused ? (
-              <button onClick={resumeTracking} className="w-10 h-10 bg-bg-main text-primary rounded-full flex items-center justify-center">
-                <span className="material-symbols-outlined">play_arrow</span>
-              </button>
-            ) : (
-              <button onClick={pauseTracking} className="w-10 h-10 bg-bg-main text-primary rounded-full flex items-center justify-center">
-                <span className="material-symbols-outlined">pause</span>
-              </button>
-            )}
-            <button onClick={stopTracking} className="w-10 h-10 bg-danger text-bg-main rounded-full flex items-center justify-center">
-              <span className="material-symbols-outlined">stop</span>
-            </button>
-          </div>
-        </div>
-    </div>
-  );
-}
-
 function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isRecording, enableLocationTracking } = useTracking();
+  const { isRecording } = useTracking();
   const { isMobile } = useDeviceType();
-  const [showPermissionPopup, setShowPermissionPopup] = useState(false);
   
   // Hide bottom nav on tracking screen
   const isTrackingScreen = location.pathname === '/tracking';
-
-  useEffect(() => {
-    const handled = localStorage.getItem('locationPromptHandled');
-    if (!handled) {
-      setShowPermissionPopup(true);
-    }
-  }, []);
 
   const handleStartTrackingClick = () => {
     navigate('/tracking');
   };
 
-  const requestPermissions = () => {
-    setShowPermissionPopup(false);
-    if (window.AndroidInterface && window.AndroidInterface.requestPermissions) {
-      window.AndroidInterface.requestPermissions();
-    }
-    enableLocationTracking();
-  };
-
-  const cancelPermissions = () => {
-    setShowPermissionPopup(false);
-    localStorage.setItem('locationPromptHandled', 'dismissed');
-  };
-
   return (
     <div className="flex flex-col h-[100dvh] bg-bg-main text-text-main relative w-full">
-      <PersistentTrackingNotification />
-      
-      {showPermissionPopup && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-bg-nav p-6 rounded-2xl max-w-sm w-full shadow-2xl flex flex-col items-center text-center">
-            <div className="w-16 h-16 bg-primary/20 text-primary rounded-full flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-3xl">location_on</span>
-            </div>
-            <h2 className="text-xl font-bold mb-2">Wymagane uprawnienia</h2>
-            <p className="text-inactive text-sm mb-6">
-              Aby poprawnie śledzić Twoją aktywność, aplikacja potrzebuje dostępu do lokalizacji.
-            </p>
-            <div className="flex gap-3 w-full">
-              <button 
-                onClick={cancelPermissions}
-                className="flex-1 py-3 rounded-xl font-semibold bg-gray-800 text-white"
-              >
-                Anuluj
-              </button>
-              <button 
-                onClick={requestPermissions}
-                className="flex-1 py-3 rounded-xl font-semibold bg-primary text-bg-main"
-              >
-                Zezwól
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <main className={`flex-1 overflow-y-auto relative ${isTrackingScreen ? '' : 'pb-20'} ${isRecording && !isTrackingScreen ? 'pt-16' : ''}`}>
         <Routes>
           <Route path="/" element={<HomeScreen />} />

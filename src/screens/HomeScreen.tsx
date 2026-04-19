@@ -1,66 +1,10 @@
 import { t } from '../i18n';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useDeviceType } from '../hooks/useDeviceType';
 
 export default function HomeScreen() {
   const { isMobile } = useDeviceType();
   const [range, setRange] = useState<'today' | 'month' | 'year' | 'all'>('month');
-
-  const [androidSessions, setAndroidSessions] = useState<any[] | null>(null);
-
-  useEffect(() => {
-    if (window.AndroidInterface) {
-      window.onAndroidSessionsLoaded = (jsonStr: string) => {
-        try {
-          const arr = JSON.parse(jsonStr);
-          setAndroidSessions(arr);
-        } catch(e) {
-          console.error(e);
-        }
-      };
-      window.AndroidInterface.getSessionsAsync();
-    }
-  }, []);
-
-  const isAndroid = !!window.AndroidInterface;
-  const sessions = isAndroid ? androidSessions : [];
-
-  if (!sessions && isAndroid) return <div className="p-4">Loading...</div>;
-
-  const now = new Date();
-  const filteredSessions = sessions.filter(s => {
-    const d = new Date(s.startTime);
-    if (range === 'today') {
-      return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    }
-    if (range === 'month') {
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    }
-    if (range === 'year') {
-      return d.getFullYear() === now.getFullYear();
-    }
-    return true;
-  });
-
-  const totalDistance = filteredSessions.reduce((acc, s) => acc + s.distanceMeters, 0) / 1000;
-  const totalDurationMs = filteredSessions.reduce((acc, s) => acc + s.durationMs, 0);
-  const totalDurationHours = totalDurationMs / (1000 * 60 * 60);
-  const avgSpeed = totalDurationHours > 0 ? totalDistance / totalDurationHours : 0;
-
-  // Calculate favorite activity
-  const activityCounts = filteredSessions.reduce((acc, s) => {
-    acc[s.type] = (acc[s.type] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  
-  let favoriteActivity = '--';
-  let maxCount = 0;
-  for (const [type, count] of Object.entries(activityCounts)) {
-    if ((count as number) > maxCount) {
-      maxCount = count as number;
-      favoriteActivity = type;
-    }
-  }
 
   return (
     <div className={`p-6 ${!isMobile ? 'max-w-[100dvh]' : ''} mx-auto w-full`}>
@@ -86,24 +30,24 @@ export default function HomeScreen() {
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-bg-nav p-4 rounded-2xl flex flex-col items-center justify-center text-center min-h-[120px]">
           <span className="text-inactive text-sm mb-1">{t.total_distance}</span>
-          <span className="text-3xl font-bold text-text-main">{totalDistance.toFixed(2)}</span>
+          <span className="text-3xl font-bold text-text-main">0.00</span>
           <span className="text-xs text-inactive mt-1">km</span>
         </div>
         
         <div className="bg-bg-nav p-4 rounded-2xl flex flex-col items-center justify-center text-center min-h-[120px]">
           <span className="text-inactive text-sm mb-1">{t.avg_speed}</span>
-          <span className="text-3xl font-bold text-text-main">{avgSpeed.toFixed(1)}</span>
+          <span className="text-3xl font-bold text-text-main">0.0</span>
           <span className="text-xs text-inactive mt-1">km/h</span>
         </div>
 
         <div className="bg-bg-nav p-4 rounded-2xl flex flex-col items-center justify-center text-center min-h-[120px]">
           <span className="text-inactive text-sm mb-1">Ulubiona aktywność</span>
-          <span className="text-xl font-bold text-text-main capitalize">{favoriteActivity}</span>
+          <span className="text-xl font-bold text-text-main capitalize">--</span>
         </div>
 
         <div className="bg-bg-nav p-4 rounded-2xl flex flex-col items-center justify-center text-center min-h-[120px]">
           <span className="text-inactive text-sm mb-1">Liczba aktywności</span>
-          <span className="text-3xl font-bold text-text-main">{filteredSessions.length}</span>
+          <span className="text-3xl font-bold text-text-main">0</span>
         </div>
       </div>
     </div>
